@@ -2,8 +2,8 @@ package git
 
 import (
 	"bytes"
+	"dh/pkg/config"
 	"fmt"
-	"log"
 	"os/exec"
 )
 
@@ -15,24 +15,34 @@ func NewGitExecutor(gitPath string) *Executor {
 	return &Executor{path: gitPath}
 }
 
-func (r *Executor) Status() error {
-	err, stdout, stderr := r.execute("status")
-	if err != nil {
-		log.Fatalf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
-		return err
-	}
-	log.Print(stdout.String())
-	return nil
+func (r *Executor) Checkout(issueBranch string) error {
+	return r.execute("checkout", issueBranch)
 }
 
-func (r *Executor) execute(arg string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer) {
-	cmd := exec.Command(r.path, arg)
+func (r *Executor) Stash(pop bool) error {
+	arg := "stash"
+	if pop {
+		return r.execute(arg, "pop")
+	} else {
+		return r.execute(arg)
+	}
+}
+
+func (r *Executor) execute(command string, flags ...string) error {
+	argWithFlags := []string{command}
+	argWithFlags = append(argWithFlags, flags...)
+	cmd := exec.Command(r.path, argWithFlags...)
+	config.InfoLog.Printf("executing command: %s", cmd.String())
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return err, nil, &stderr
+		config.ErrLog.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
+		return fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
+			err, argWithFlags, stderr.String(),
+		)
 	}
-	return nil, &stdout, nil
+	config.InfoLog.Print(stdout.String())
+	return nil
 }

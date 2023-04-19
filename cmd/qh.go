@@ -7,7 +7,6 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(qhCommand)
 	qhCommand.
 		Flags().
 		StringVarP(&query, "query", "q", "", "SQL query")
