@@ -29,23 +29,33 @@ var mrhCommand = &cobra.Command{
 	Use:   "mrh",
 	Short: "merge request helper - tool for simpler local git repository management while doing reviewing merge requests",
 	Args:  cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		var err error
-		issue := args[0]
+	Run:   mrh,
+}
 
+func mrh(cmd *cobra.Command, args []string) {
+	var err error
+	issue := args[0]
+
+	// save changes in stash
+	if !done {
+		err = errors.Join(gitExecutor.Stash(false))
+		err = errors.Join(gitExecutor.Checkout(branchType + "/" + issue))
+	} else {
+		// TODO: add prompt check (checklist like: did test ran succesfully, will sonar check pass? ...)
+		// code review done, checkout back to develop and pop stashed changes
+		err = errors.Join(gitExecutor.Checkout("develop"))
+		err = errors.Join(gitExecutor.Stash(true))
+	}
+
+	if err != nil {
+		rollback(err)
+	} else {
 		if !done {
-			err = errors.Join(gitExecutor.Stash(false))
-			err = errors.Join(gitExecutor.Checkout(branchType + "/" + issue))
+			config.InfoLog.Print("repository is ready for code review")
 		} else {
-			// TODO: na zaklade git stash list rozhodnut ci iden spravit git stash pop alebo nie
-			err = errors.Join(gitExecutor.Stash(true))
+			config.InfoLog.Print("repository has rolled back to state before code review")
 		}
-
-		if err != nil {
-			rollback(err)
-		}
-
-	},
+	}
 }
 
 func rollback(err error) {

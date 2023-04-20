@@ -22,13 +22,30 @@ func (r *Executor) Checkout(issueBranch string) error {
 func (r *Executor) Stash(pop bool) error {
 	arg := "stash"
 	if pop {
-		return r.execute(arg, "pop")
+		if !r.stashHasEntries() {
+			config.WarnLog.Print("no stash entries in repo")
+			return nil
+		} else {
+			return r.execute(arg, "pop")
+		}
 	} else {
 		return r.execute(arg)
 	}
 }
 
-func (r *Executor) execute(command string, flags ...string) error {
+func (r *Executor) stashHasEntries() bool {
+	err, stdout, _ := r.executeWithResult("stash", "list")
+	if err != nil {
+		config.ErrLog.Fatal(err.Error())
+		return false
+	}
+	if stdout.Len() < 1 {
+		return false
+	}
+	return true
+}
+
+func (r *Executor) executeWithResult(command string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer) {
 	argWithFlags := []string{command}
 	argWithFlags = append(argWithFlags, flags...)
 	cmd := exec.Command(r.path, argWithFlags...)
@@ -41,8 +58,13 @@ func (r *Executor) execute(command string, flags ...string) error {
 		config.ErrLog.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
 		return fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
 			err, argWithFlags, stderr.String(),
-		)
+		), nil, &stderr
 	}
 	config.InfoLog.Print(stdout.String())
-	return nil
+	return nil, &stdout, nil
+}
+
+func (r *Executor) execute(command string, flags ...string) error {
+	err, _, _ := r.executeWithResult(command, flags...)
+	return err
 }

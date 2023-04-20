@@ -1,6 +1,9 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"dh/pkg/config"
+	"github.com/spf13/cobra"
+)
 
 var (
 	query string
@@ -17,6 +20,6 @@ var qhCommand = &cobra.Command{
 	Short: "query helper - collection of SQL queries",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		print("qh")
+		config.InfoLog.Print(args)
 	},
 }
