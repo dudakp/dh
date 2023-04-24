@@ -2,27 +2,25 @@ package cmd
 
 import (
 	"dh/pkg/config"
-	"dh/pkg/git"
+	"dh/pkg/executor"
 	"errors"
 	"github.com/spf13/cobra"
-	"log"
-	"os/exec"
 )
 
 var (
 	branchType  string
 	done        bool
-	gitExecutor *git.Executor
+	gitExecutor *executor.GitExecutor
 )
 
 func init() {
 	mrhCommand.
 		Flags().
-		StringVarP(&branchType, "branchType", "b", "feature", "Branch type")
+		StringVarP(&branchType, "branchType", "t", "feature", "Branch type")
 	mrhCommand.
 		Flags().
 		BoolVarP(&done, "done", "d", false, "Merge request done")
-	gitExecutor = git.NewGitExecutor(findGitExecutable())
+	gitExecutor = executor.NewGitExecutor()
 }
 
 var mrhCommand = &cobra.Command{
@@ -64,12 +62,4 @@ func rollback(err error) {
 	if err != nil {
 		config.ErrLog.Fatalf("Error during git stash pop: %s. Please resolver this error manually", err.Error())
 	}
-}
-
-func findGitExecutable() string {
-	path, err := exec.LookPath("git")
-	if err != nil {
-		log.Fatal("Unable to find git executable!")
-	}
-	return path
 }
