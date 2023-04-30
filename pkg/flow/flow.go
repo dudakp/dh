@@ -2,30 +2,29 @@ package flow
 
 import "errors"
 
-type EffectHandler struct {
-	Action  func() error
-	OnError func(error)
-	next    *EffectHandler
-	prev    *EffectHandler
-}
+type HandlerData interface{}
 
-type Controller interface {
-	CreateFlow(handlers ...*EffectHandler) error
-	ExecuteFlow() error
+type Handler struct {
+	Action  func(HandlerData) (error, HandlerData)
+	OnError func(error)
+	next    *Handler
+	prev    *Handler
 }
 
 type Flow struct {
-	TerminalOnError func(err error)
-	firstHandler    *EffectHandler
+	InitialData     HandlerData
+	terminalOnError func(err error)
+	firstHandler    *Handler
 }
 
-func (r *Flow) CreateFlow(handlers ...*EffectHandler) error {
+func NewFlow(terminalOnError func(err error), handlers ...*Handler) (error, *Flow) {
 	if len(handlers) < 2 {
-		return errors.New("minimum 2 handlers need to be specified")
+		return errors.New("minimum 2 handlers need to be specified"), nil
 	}
-	var res = handlers[0]
-	res.prev = nil
-	res.next = handlers[1]
+
+	var firstHandler = handlers[0]
+	firstHandler.prev = nil
+	firstHandler.next = handlers[1]
 	for i, handler := range handlers {
 		if i == 0 {
 			handler.prev = nil
@@ -37,34 +36,24 @@ func (r *Flow) CreateFlow(handlers ...*EffectHandler) error {
 			}
 		}
 	}
-	r.firstHandler = res
-	return nil
-}
-
-func (r *Flow) ExecuteFlow() error {
-	return r.execute(r.firstHandler)
-}
-
-func (r *Flow) execute(handler *EffectHandler) error {
-	err := handler.Action()
-	if err != nil {
-		executeErrorHandler(handler, err)
-		return err
-	} else {
-		if r.TerminalOnError != nil {
-			r.TerminalOnError(err)
-			return err
-		}
-		if handler.next != nil {
-			return r.execute(handler.next)
-		}
-		return err
+	return nil, &Flow{
+		terminalOnError: terminalOnError,
+		firstHandler:    firstHandler,
 	}
 }
 
-func executeErrorHandler(handlerWithError *EffectHandler, err error) {
-	handlerWithError.OnError(err)
-	if handlerWithError.prev != nil {
-		executeErrorHandler(handlerWithError.prev, err)
+func handleError(handler *Handler, err error, r *Flow) error {
+	if r.terminalOnError != nil {
+		r.terminalOnError(err)
+		return err
+	}
+	executeErrorHandler(handler, err)
+	return err
+}
+
+func executeErrorHandler(handler *Handler, err error) {
+	handler.OnError(err)
+	if handler.prev != nil {
+		executeErrorHandler(handler.prev, err)
 	}
 }
