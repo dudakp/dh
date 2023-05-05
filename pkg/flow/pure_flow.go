@@ -1,10 +1,10 @@
 package flow
 
-func ExecutePureFlow(flow *Flow) (error, HandlerData) {
+func ExecutePureFlow(flow *flow) (error, Data) {
 	return executePure(flow.firstHandler, flow.InitialData, flow)
 }
 
-func executePure(handler *Handler, data HandlerData, flow *Flow) (error, HandlerData) {
+func executePure(handler *Handler, data Data, flow *flow) (error, Data) {
 	err, resData := handler.Action(data)
 	if err != nil {
 		return handleError(handler, err, flow), nil

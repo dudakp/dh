@@ -2,24 +2,17 @@ package flow
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
 func Test_EffectHandler_ExecuteEffectFlow(t *testing.T) {
-	err, flow := NewFlow(nil, &Handler{
-		Action:  nil,
-		OnError: nil,
-		next:    nil,
-		prev:    nil,
-	})
+	err, flow := NewEffectFlow(nil, &Handler{}, &Handler{})
 	if err != nil {
-		_ = fmt.Errorf("%w", err)
-		t.FailNow()
+		t.Fatalf("error during creation of flow: %s", err.Error())
 	}
 	var tests = []struct {
 		name  string
-		input *Flow
+		input *EffectFlow
 		want  string
 	}{
 		{
@@ -29,6 +22,10 @@ func Test_EffectHandler_ExecuteEffectFlow(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			err := ExecuteEffectFlow(flow)
+			if err != nil {
+				t.Fatalf("flow execution error: %s", err.Error())
+			}
 		})
 	}
 }
@@ -38,10 +35,9 @@ func Test_NewFlow(t *testing.T) {
 	handler1 := &Handler{}
 	handler2 := &Handler{}
 
-	err, flow := NewFlow(nil, handler0, handler1, handler2)
+	err, flow := newFlow(nil, handler0, handler1, handler2)
 	if err != nil {
-		_ = fmt.Errorf("%s", err)
-		t.FailNow()
+		t.Errorf("error during creation of flow: %s", err.Error())
 	}
 
 	// check first handler
@@ -76,7 +72,7 @@ func Test_NewFlow(t *testing.T) {
 }
 
 func Test_NewFlow_minHandlers(t *testing.T) {
-	err, _ := NewFlow(nil, &Handler{})
+	err, _ := newFlow(nil, &Handler{})
 	if err == nil {
 		t.FailNow()
 	}
@@ -93,7 +89,7 @@ func Test_executeErrorHandler(t *testing.T) {
 			name: "last in flow",
 			want: "error",
 			input: &Handler{
-				Action: func(data HandlerData) (error, HandlerData) {
+				Action: func(data Data) (error, Data) {
 					return nil, nil
 				},
 				OnError: func(err error) {
@@ -105,14 +101,14 @@ func Test_executeErrorHandler(t *testing.T) {
 			name: "not last in flow",
 			want: "error",
 			input: &Handler{
-				Action: func(data HandlerData) (error, HandlerData) {
+				Action: func(data Data) (error, Data) {
 					return nil, nil
 				},
 				OnError: func(err error) {
 					in = "world"
 				},
 				prev: &Handler{
-					Action: func(data HandlerData) (error, HandlerData) {
+					Action: func(data Data) (error, Data) {
 						return nil, nil
 					},
 					OnError: func(err error) {
@@ -125,7 +121,7 @@ func Test_executeErrorHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			executeErrorHandler(test.input, errors.New("err"))
 			if in != test.want {
-				fmt.Printf("want: %s, got: %s", test.want, in)
+				t.Errorf("want: %s, got: %s", test.want, in)
 				t.FailNow()
 			}
 			in = "hello"

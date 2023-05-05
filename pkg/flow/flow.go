@@ -2,23 +2,26 @@ package flow
 
 import "errors"
 
-type HandlerData interface{}
+// TODO: add generic parameters so that HanderData can be used
+type Data[T any] struct {
+	data T
+}
 
 type Handler struct {
-	Action  func(HandlerData) (error, HandlerData)
+	Action  func(Data[any]) (error, Data[any])
 	OnError func(error)
 	next    *Handler
 	prev    *Handler
 }
 
-type Flow struct {
-	InitialData     HandlerData
+type flow[T any] struct {
+	InitialData     Data[T]
 	terminalOnError func(err error)
 	firstHandler    *Handler
 }
 
-func NewFlow(terminalOnError func(err error), handlers ...*Handler) (error, *Flow) {
-	if len(handlers) < 2 {
+func newFlow[T any](terminalOnError func(err error), initialData T, handlers ...*Handler) (error, *flow[T]) {
+	if handlers == nil || len(handlers) < 2 {
 		return errors.New("minimum 2 handlers need to be specified"), nil
 	}
 
@@ -36,13 +39,14 @@ func NewFlow(terminalOnError func(err error), handlers ...*Handler) (error, *Flo
 			}
 		}
 	}
-	return nil, &Flow{
+	return nil, &flow[T]{
+		InitialData:     Data[T]{data: initialData},
 		terminalOnError: terminalOnError,
 		firstHandler:    firstHandler,
 	}
 }
 
-func handleError(handler *Handler, err error, r *Flow) error {
+func handleError[T any](handler *Handler, err error, r *flow[T]) error {
 	if r.terminalOnError != nil {
 		r.terminalOnError(err)
 		return err
