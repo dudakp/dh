@@ -2,25 +2,20 @@ package flow
 
 import "errors"
 
-// TODO: add generic parameters so that HanderData can be used
-type Data[T any] struct {
-	data T
-}
-
-type Handler struct {
-	Action  func(Data[any]) (error, Data[any])
+type Handler[T any] struct {
+	Action  func(T) (error, T)
 	OnError func(error)
-	next    *Handler
-	prev    *Handler
+	next    *Handler[T]
+	prev    *Handler[T]
 }
 
 type flow[T any] struct {
-	InitialData     Data[T]
+	InitialData     T
 	terminalOnError func(err error)
-	firstHandler    *Handler
+	firstHandler    *Handler[T]
 }
 
-func newFlow[T any](terminalOnError func(err error), initialData T, handlers ...*Handler) (error, *flow[T]) {
+func newFlow[T any](terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (error, *flow[T]) {
 	if handlers == nil || len(handlers) < 2 {
 		return errors.New("minimum 2 handlers need to be specified"), nil
 	}
@@ -40,24 +35,24 @@ func newFlow[T any](terminalOnError func(err error), initialData T, handlers ...
 		}
 	}
 	return nil, &flow[T]{
-		InitialData:     Data[T]{data: initialData},
+		InitialData:     initialData,
 		terminalOnError: terminalOnError,
 		firstHandler:    firstHandler,
 	}
 }
 
-func handleError[T any](handler *Handler, err error, r *flow[T]) error {
+func (r flow[T]) handleError(handler *Handler[T], err error) error {
 	if r.terminalOnError != nil {
 		r.terminalOnError(err)
 		return err
 	}
-	executeErrorHandler(handler, err)
+	r.executeErrorHandler(handler, err)
 	return err
 }
 
-func executeErrorHandler(handler *Handler, err error) {
+func (r flow[T]) executeErrorHandler(handler *Handler[T], err error) {
 	handler.OnError(err)
 	if handler.prev != nil {
-		executeErrorHandler(handler.prev, err)
+		r.executeErrorHandler(handler.prev, err)
 	}
 }
