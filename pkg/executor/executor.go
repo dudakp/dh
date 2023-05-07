@@ -2,7 +2,7 @@ package executor
 
 import (
 	"bytes"
-	"dh/pkg/config"
+	"dh/internal/config"
 	"fmt"
 	"os/exec"
 )

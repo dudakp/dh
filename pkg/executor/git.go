@@ -1,7 +1,7 @@
 package executor
 
 import (
-	"dh/pkg/config"
+	"dh/internal/config"
 )
 
 type GitExecutor struct {

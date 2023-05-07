@@ -1,5 +1,7 @@
 package config
 
+// TODO: refactor this to use zerolog
+
 import (
 	"log"
 	"os"

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"dh/pkg/config"
+	"dh/internal/config"
 	"github.com/spf13/cobra"
 )
 
