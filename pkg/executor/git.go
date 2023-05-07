@@ -5,12 +5,12 @@ import (
 )
 
 type GitExecutor struct {
-	BaseExecutor
+	FileExecutor
 }
 
 func NewGitExecutor() *GitExecutor {
 	res := &GitExecutor{
-		newBaseExecutor("git"),
+		newFileExecutor("git"),
 	}
 	return res
 }

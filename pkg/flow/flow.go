@@ -16,9 +16,9 @@ TODO: create execution strategies
 TODO: create flow types:
 	* ApiFlow
 		flow calling REST API
-	* TemplatedExecutor
+	* TemplatedFlow
 		flow definition in file, calling scripts (bash scripts)
-**/
+*/
 
 import (
 	"dh/internal/config"
