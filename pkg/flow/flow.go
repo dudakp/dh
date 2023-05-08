@@ -21,7 +21,7 @@ TODO: create flow types:
 */
 
 import (
-	"dh/internal/config"
+	"dh/internal/logging"
 	"errors"
 )
 
@@ -63,9 +63,9 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 		onError: onError,
 	}
 	if res.onError == nil {
-		config.WarnLog.Printf("missing onError function for handler. creating default onError")
+		logging.WarnLog.Printf("missing onError function for handler. creating default onError")
 		res.onError = func(handler *Handler[T], err error) {
-			config.WarnLog.Printf("calling onError from handler with id: %d", handler.id)
+			logging.WarnLog.Printf("calling onError from handler with id: %d", handler.id)
 		}
 	}
 	withEventLog(res)
@@ -80,7 +80,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 		flowOpts = &Opts{}
 	}
 
-	config.InfoLog.Printf("constructing flow with name: %s", flowOpts.Name)
+	logging.InfoLog.Printf("constructing flow with name: %s", flowOpts.Name)
 
 	var firstHandler = handlers[0]
 	firstHandler.prev = nil
@@ -111,7 +111,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 
 func (r flow[T]) handleError(handler *Handler[T], err error) error {
 	if r.terminalOnError != nil && !r.terminalOnErrorExecuted {
-		config.InfoLog.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
+		logging.InfoLog.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
 		r.terminalOnError(err)
 		if !r.opts.ExecuteOnErrorAlways {
 			return err
@@ -131,18 +131,18 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 func withEventLog[T any](handler *Handler[T]) {
 	originalAction := handler.action
 	handler.action = func(data T) (error, T) {
-		config.InfoLog.Printf("executing handler: %d", handler.id)
+		logging.InfoLog.Printf("executing handler: %d", handler.id)
 		err, res := originalAction(data)
 		if err == nil {
-			config.InfoLog.Printf("handler: %d executed successfully", handler.id)
+			logging.InfoLog.Printf("handler: %d executed successfully", handler.id)
 		}
 		return err, res
 	}
 
 	originalOnError := handler.onError
 	handler.onError = func(handler *Handler[T], err error) {
-		config.WarnLog.Printf("executing onError for handler: %d", handler.id)
+		logging.WarnLog.Printf("executing onError for handler: %d", handler.id)
 		originalOnError(handler, err)
-		config.WarnLog.Printf("onError for handler: %d executed successfully", handler.id)
+		logging.WarnLog.Printf("onError for handler: %d executed successfully", handler.id)
 	}
 }

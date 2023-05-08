@@ -1,6 +1,6 @@
 package flow
 
-import "dh/internal/config"
+import "dh/internal/logging"
 
 type EffectFlow[T any] struct {
 	*flow[T]
@@ -22,9 +22,9 @@ func NewEffectFlow(flowOpts *Opts, terminalOnError func(err error), handlers ...
 }
 
 func ExecuteEffectFlow(f *EffectFlow[any]) error {
-	config.InfoLog.Printf("executing flow: %s", f.opts.Name)
+	logging.InfoLog.Printf("executing flow: %s", f.opts.Name)
 	err := executeEffect(f.firstHandler, f)
-	config.InfoLog.Printf("flow: %s executed successful", f.opts.Name)
+	logging.InfoLog.Printf("flow: %s executed successful", f.opts.Name)
 	return err
 }
 

@@ -1,6 +1,6 @@
 package flow
 
-import "dh/internal/config"
+import "dh/internal/logging"
 
 type PureFlow[T any] struct {
 	*flow[T]
@@ -20,14 +20,14 @@ func NewPureFlow[T any](flowOpts *Opts, terminalOnError func(err error), initial
 	}
 }
 
-func ExecutePureFlow(f *EffectFlow[any]) error {
-	config.InfoLog.Printf("executing flow: %s", f.opts.Name)
+func ExecutePureFlow(f *PureFlow[any]) error {
+	logging.InfoLog.Printf("executing flow: %s", f.opts.Name)
 	err := executePure(f.firstHandler, f.initialData, f)
-	config.InfoLog.Printf("flow: %s executed successful", f.opts.Name)
+	logging.InfoLog.Printf("flow: %s executed successful", f.opts.Name)
 	return err
 }
 
-func executePure[T any](handler *Handler[any], handlerOutput T, f *EffectFlow[any]) error {
+func executePure[T any](handler *Handler[any], handlerOutput T, f *PureFlow[any]) error {
 	err, out := handler.action(handlerOutput)
 	if err != nil {
 		return f.flow.handleError(handler, err)

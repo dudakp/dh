@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"dh/internal/config"
+	"dh/internal/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +20,6 @@ var qhCommand = &cobra.Command{
 	Short: "query helper - collection of SQL queries",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		config.InfoLog.Print(args)
+		logging.InfoLog.Print(args)
 	},
 }

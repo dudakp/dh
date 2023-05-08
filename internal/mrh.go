@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"dh/internal/config"
+	"dh/internal/logging"
 	"dh/pkg/executor"
 	"dh/pkg/flow"
 	"errors"
@@ -57,7 +57,7 @@ func (r *Mrh) Run(issue string) {
 	)
 	err = errors.Join(err)
 	if err != nil {
-		config.ErrLog.Fatalf("%s")
+		logging.ErrLog.Fatalf("%s")
 		return
 	}
 	if !r.Done {
@@ -70,17 +70,17 @@ func (r *Mrh) Run(issue string) {
 
 	if err == nil {
 		if !r.Done {
-			config.InfoLog.Print("repository is ready for code review")
+			logging.InfoLog.Print("repository is ready for code review")
 		} else {
-			config.InfoLog.Print("repository has rolled back to state before code review")
+			logging.InfoLog.Print("repository has rolled back to state before code review")
 		}
 	}
 }
 
 func (r *Mrh) rollback(err error) {
-	config.ErrLog.Printf("calling rollback action caused by error: %s", err.Error())
+	logging.ErrLog.Printf("calling rollback action caused by error: %s", err.Error())
 	err = r.GitExecutor.Stash(true)
 	if err != nil {
-		config.ErrLog.Fatalf("Error during git stash pop: %s. Please resolver this error manually", err.Error())
+		logging.ErrLog.Fatalf("Error during git stash pop: %s. Please resolver this error manually", err.Error())
 	}
 }

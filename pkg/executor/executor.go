@@ -7,7 +7,7 @@ TODO: create executor types
 
 import (
 	"bytes"
-	"dh/internal/config"
+	"dh/internal/logging"
 	"fmt"
 	"os/exec"
 )
@@ -32,30 +32,30 @@ func newFileExecutor(executableName string) FileExecutor {
 func findExecutable(executableName string) string {
 	path, err := exec.LookPath(executableName)
 	if err != nil {
-		config.ErrLog.Fatalf("Unable to find executable: %s!", executableName)
+		logging.ErrLog.Fatalf("Unable to find executable: %s!", executableName)
 	}
 	return path
 }
 
-// executeWithResult executes given command with flags and returns stdout and stderr bufers containing executed command result.
+// executeWithResult executes given command with flags and returns stdout and stderr buffers containing executed command result.
 // Additionally, error is returned if command ended with non-zero status
 // stdout is nil if error is not-nil and stderr is nil if error is nil
 func (r *FileExecutor) executeWithResult(command string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer) {
 	argWithFlags := []string{command}
 	argWithFlags = append(argWithFlags, flags...)
 	cmd := exec.Command(r.path, argWithFlags...)
-	config.InfoLog.Printf("executing command: %s", cmd.String())
+	logging.InfoLog.Printf("executing command: %s", cmd.String())
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		config.ErrLog.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
+		logging.ErrLog.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
 		return fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
 			err, argWithFlags, stderr.String(),
 		), nil, &stderr
 	}
-	config.InfoLog.Print(stdout.String())
+	logging.InfoLog.Print(stdout.String())
 	return nil, &stdout, nil
 }
 
