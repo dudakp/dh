@@ -26,7 +26,9 @@ import (
 )
 
 var (
-	logger                  = logging.GetLoggerFor("flow")
+	logger          = logging.GetLoggerFor("flow")
+	flowEventLogger = logging.GetEventLoggerFor("flow").
+			Format("action[%s]")
 	HandlerMissingActionErr = errors.New("no action function specified for handler")
 )
 
@@ -66,7 +68,7 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 	if res.onError == nil {
 		logger.Printf("missing onError function for handler. creating default onError")
 		res.onError = func(handler *Handler[T], err error) {
-			logger.Printf("calling onError from handler with id: %d", handler.id)
+			flowEventLogger.LogEvent("calling onError from handler with id: %d", handler.id)
 		}
 	}
 	withEventLog(res)
@@ -131,20 +133,23 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 }
 
 func withEventLog[T any](handler *Handler[T]) {
+	flowEventLogger.LogPair(func() error {
+		return nil
+	}, "testing %s", "logging")
 	originalAction := handler.action
 	handler.action = func(data T) (error, T) {
-		logger.Printf("executing handler: %d", handler.id)
+		flowEventLogger.LogEvent("executing handler: %d", handler.id)
 		err, res := originalAction(data)
 		if err == nil {
-			logger.Printf("handler: %d executed successfully", handler.id)
+			flowEventLogger.LogEvent("handler: %d executed successfully", handler.id)
 		}
 		return err, res
 	}
 
 	originalOnError := handler.onError
 	handler.onError = func(handler *Handler[T], err error) {
-		logger.Printf("executing onError for handler: %d", handler.id)
+		flowEventLogger.LogEvent("executing onError for handler: %d", handler.id)
 		originalOnError(handler, err)
-		logger.Printf("onError for handler: %d executed successfully", handler.id)
+		flowEventLogger.LogEvent("onError for handler: %d executed successfully", handler.id)
 	}
 }
