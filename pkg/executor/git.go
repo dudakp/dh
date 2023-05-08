@@ -1,9 +1,5 @@
 package executor
 
-import (
-	"dh/internal/logging"
-)
-
 type GitExecutor struct {
 	FileExecutor
 }
@@ -23,7 +19,7 @@ func (r *GitExecutor) Stash(pop bool) error {
 	arg := "stash"
 	if pop {
 		if !r.stashHasEntries() {
-			logging.WarnLog.Print("no stash entries in repo")
+			logger.Print("no stash entries in repo")
 			return nil
 		} else {
 			return r.execute(arg, "pop")
@@ -36,7 +32,7 @@ func (r *GitExecutor) Stash(pop bool) error {
 func (r *GitExecutor) stashHasEntries() bool {
 	err, stdout, _ := r.executeWithResult("stash", "list")
 	if err != nil {
-		logging.ErrLog.Fatal(err.Error())
+		logger.Fatal(err.Error())
 		return false
 	}
 	if stdout.Len() < 1 {

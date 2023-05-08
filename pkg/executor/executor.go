@@ -12,6 +12,10 @@ import (
 	"os/exec"
 )
 
+var (
+	logger = logging.GetLoggerFor("executor")
+)
+
 type Executor interface {
 	executeWithResult(command string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer)
 	execute(command string, flags ...string) error
@@ -32,7 +36,7 @@ func newFileExecutor(executableName string) FileExecutor {
 func findExecutable(executableName string) string {
 	path, err := exec.LookPath(executableName)
 	if err != nil {
-		logging.ErrLog.Fatalf("Unable to find executable: %s!", executableName)
+		logger.Fatalf("Unable to find executable: %s!", executableName)
 	}
 	return path
 }
@@ -44,18 +48,18 @@ func (r *FileExecutor) executeWithResult(command string, flags ...string) (error
 	argWithFlags := []string{command}
 	argWithFlags = append(argWithFlags, flags...)
 	cmd := exec.Command(r.path, argWithFlags...)
-	logging.InfoLog.Printf("executing command: %s", cmd.String())
+	logger.Printf("executing command: %s", cmd.String())
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		logging.ErrLog.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
+		logger.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
 		return fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
 			err, argWithFlags, stderr.String(),
 		), nil, &stderr
 	}
-	logging.InfoLog.Print(stdout.String())
+	logger.Print(stdout.String())
 	return nil, &stdout, nil
 }
 

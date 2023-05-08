@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"dh/internal"
+	mrh2 "dh/internal/mrh"
 	"dh/pkg/executor"
 	"github.com/spf13/cobra"
 )
 
-var mrhService *internal.Mrh
+var mrhService *mrh2.Mrh
 
 func init() {
-	mrhService = &internal.Mrh{
+	mrhService = &mrh2.Mrh{
 		GitExecutor: executor.NewGitExecutor(),
 	}
 

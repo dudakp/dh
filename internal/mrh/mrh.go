@@ -1,10 +1,14 @@
-package internal
+package mrh
 
 import (
 	"dh/internal/logging"
 	"dh/pkg/executor"
 	"dh/pkg/flow"
 	"errors"
+)
+
+var (
+	logger = logging.GetLoggerFor("mrh")
 )
 
 type Mrh struct {
@@ -57,7 +61,7 @@ func (r *Mrh) Run(issue string) {
 	)
 	err = errors.Join(err)
 	if err != nil {
-		logging.ErrLog.Fatalf("%s")
+		logger.Fatalf("%s")
 		return
 	}
 	if !r.Done {
@@ -70,17 +74,17 @@ func (r *Mrh) Run(issue string) {
 
 	if err == nil {
 		if !r.Done {
-			logging.InfoLog.Print("repository is ready for code review")
+			logger.Print("repository is ready for code review")
 		} else {
-			logging.InfoLog.Print("repository has rolled back to state before code review")
+			logger.Print("repository has rolled back to state before code review")
 		}
 	}
 }
 
 func (r *Mrh) rollback(err error) {
-	logging.ErrLog.Printf("calling rollback action caused by error: %s", err.Error())
+	logger.Printf("calling rollback action caused by error: %s", err.Error())
 	err = r.GitExecutor.Stash(true)
 	if err != nil {
-		logging.ErrLog.Fatalf("Error during git stash pop: %s. Please resolver this error manually", err.Error())
+		logger.Fatalf("Error during git stash pop: %s. Please resolver this error manually", err.Error())
 	}
 }

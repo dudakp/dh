@@ -1,7 +1,7 @@
 package flow
 
 /**
-TODO: create structured event log - outputted to console && file
+TODO: create structured event logger - outputted to console && file
 	data recorded in eventLog: flow id, flow name, handler id, timestamp, handler data, action successful, onError called, onTerminalError called
 
 TODO: create operators
@@ -26,6 +26,7 @@ import (
 )
 
 var (
+	logger                  = logging.GetLoggerFor("flow")
 	HandlerMissingActionErr = errors.New("no action function specified for handler")
 )
 
@@ -63,9 +64,9 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 		onError: onError,
 	}
 	if res.onError == nil {
-		logging.WarnLog.Printf("missing onError function for handler. creating default onError")
+		logger.Printf("missing onError function for handler. creating default onError")
 		res.onError = func(handler *Handler[T], err error) {
-			logging.WarnLog.Printf("calling onError from handler with id: %d", handler.id)
+			logger.Printf("calling onError from handler with id: %d", handler.id)
 		}
 	}
 	withEventLog(res)
@@ -77,10 +78,11 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 		return errors.New("minimum 2 handlers need to be specified"), nil
 	}
 	if flowOpts == nil {
-		flowOpts = &Opts{}
+		// TODO: add random string generation
+		flowOpts = &Opts{Name: "name"}
 	}
 
-	logging.InfoLog.Printf("constructing flow with name: %s", flowOpts.Name)
+	logger.Printf("constructing flow with name: %s", flowOpts.Name)
 
 	var firstHandler = handlers[0]
 	firstHandler.prev = nil
@@ -111,7 +113,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 
 func (r flow[T]) handleError(handler *Handler[T], err error) error {
 	if r.terminalOnError != nil && !r.terminalOnErrorExecuted {
-		logging.InfoLog.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
+		logger.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
 		r.terminalOnError(err)
 		if !r.opts.ExecuteOnErrorAlways {
 			return err
@@ -131,18 +133,18 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 func withEventLog[T any](handler *Handler[T]) {
 	originalAction := handler.action
 	handler.action = func(data T) (error, T) {
-		logging.InfoLog.Printf("executing handler: %d", handler.id)
+		logger.Printf("executing handler: %d", handler.id)
 		err, res := originalAction(data)
 		if err == nil {
-			logging.InfoLog.Printf("handler: %d executed successfully", handler.id)
+			logger.Printf("handler: %d executed successfully", handler.id)
 		}
 		return err, res
 	}
 
 	originalOnError := handler.onError
 	handler.onError = func(handler *Handler[T], err error) {
-		logging.WarnLog.Printf("executing onError for handler: %d", handler.id)
+		logger.Printf("executing onError for handler: %d", handler.id)
 		originalOnError(handler, err)
-		logging.WarnLog.Printf("onError for handler: %d executed successfully", handler.id)
+		logger.Printf("onError for handler: %d executed successfully", handler.id)
 	}
 }

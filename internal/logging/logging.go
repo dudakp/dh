@@ -1,39 +1,64 @@
 package logging
 
+/**
+TODO: add event logger - IN_PROGRESS
+	* logging to file and stdout with defined log format (parsable, maybe used for timetravel debug)
+*/
+
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
 )
 
-/**
-TODO: add logging to file
-	* create logger factory
-*/
-
 var (
-	loggerCache map[string]*log.Logger
+	loggerCache map[string]*Logger
 )
 
+type Logger struct {
+	*log.Logger
+	name string
+}
+
 func init() {
-	loggerCache = map[string]*log.Logger{}
+	loggerCache = map[string]*Logger{}
 }
 
-func GetLoggerFor(pkg string) *log.Logger {
-	return GetLoggerForWithFileOutput(pkg, nil)
-}
-
-func GetLoggerForWithFileOutput(pkg string, fileOutput *os.File) *log.Logger {
+func GetLoggerFor(pkg string) *Logger {
 	if logger, ok := loggerCache[pkg]; ok {
 		return logger
 	} else {
-		var logWriters io.Writer
-		if fileOutput == nil {
-			logWriters = os.Stdout
+		l := &Logger{
+			Logger: log.New(os.Stdout, pkg+": ", log.Ldate|log.Ltime|log.Lshortfile),
+			name:   pkg,
 		}
-		logWriters = io.MultiWriter(os.Stdout, fileOutput)
-		l := log.New(logWriters, pkg+": ", log.Ldate|log.Ltime|log.Lshortfile)
-		loggerCache["pkg"] = l
+		loggerCache[pkg] = l
 		return l
 	}
+}
+
+func (r *Logger) Flags(flags int) *Logger {
+	r.Logger.SetFlags(flags)
+	return r
+}
+
+func (
+	r *Logger) Prefix(prefix string) *Logger {
+	r.SetPrefix(prefix)
+	return r
+}
+
+// Output overrides output set for this logger
+func (r *Logger) Output(out ...io.Writer) *Logger {
+	logWriters := io.MultiWriter(out...)
+	r.SetOutput(logWriters)
+	return r
+}
+
+func (r *Logger) EventLogger(eventSubject string, eventName string) *Logger {
+	r.SetPrefix(fmt.Sprintf("%s[%s]", eventSubject, eventName))
+	r.SetFlags(log.Ldate | log.Ltime)
+
+	return r
 }

@@ -1,7 +1,5 @@
 package flow
 
-import "dh/internal/logging"
-
 type PureFlow[T any] struct {
 	*flow[T]
 }
@@ -21,9 +19,9 @@ func NewPureFlow[T any](flowOpts *Opts, terminalOnError func(err error), initial
 }
 
 func ExecutePureFlow(f *PureFlow[any]) error {
-	logging.InfoLog.Printf("executing flow: %s", f.opts.Name)
+	logger.Printf("executing flow: %s", f.opts.Name)
 	err := executePure(f.firstHandler, f.initialData, f)
-	logging.InfoLog.Printf("flow: %s executed successful", f.opts.Name)
+	logger.Printf("flow: %s executed successful", f.opts.Name)
 	return err
 }
 
