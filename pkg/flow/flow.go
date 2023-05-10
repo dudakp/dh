@@ -1,7 +1,7 @@
 package flow
 
 /**
-TODO: create structured event logger - outputted to console && file
+TODO: create structured event logger - outputted to console && file | IN_PROGRESS
 	data recorded in eventLog: flow id, flow name, handler id, timestamp, handler data, action successful, onError called, onTerminalError called
 
 TODO: create operators
@@ -23,13 +23,23 @@ TODO: create flow types:
 import (
 	"dh/internal/logging"
 	"errors"
+	"fmt"
+)
+
+const (
+	actionOnError           = "onError(handlerId:%d)"
+	actionExecutionStarted  = "action_started(handlerId:%d)"
+	actionExecutionFinished = "action_finished(handlerId:%d)"
+
+	subjectFormat = "flow(%s)"
 )
 
 var (
+	HandlerMissingActionErr = errors.New("no action function specified for handler")
+
 	logger          = logging.GetLoggerFor("flow")
 	flowEventLogger = logging.GetEventLoggerFor("flow").
-			Format("action[%s]")
-	HandlerMissingActionErr = errors.New("no action function specified for handler")
+			Format(logging.EventLoggerSubjectFormat, logging.EventLoggerEventFormat)
 )
 
 type HandlerAction[T any] func(T) (error, T)
@@ -68,7 +78,7 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 	if res.onError == nil {
 		logger.Printf("missing onError function for handler. creating default onError")
 		res.onError = func(handler *Handler[T], err error) {
-			flowEventLogger.LogEvent("calling onError from handler with id: %d", handler.id)
+			flowEventLogger.LogEvent(actionOnError, handler.id)
 		}
 	}
 	withEventLog(res)
@@ -84,6 +94,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 		flowOpts = &Opts{Name: "name"}
 	}
 
+	flowEventLogger.Subject(fmt.Sprintf(subjectFormat, flowOpts.Name))
 	logger.Printf("constructing flow with name: %s", flowOpts.Name)
 
 	var firstHandler = handlers[0]
@@ -133,23 +144,19 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 }
 
 func withEventLog[T any](handler *Handler[T]) {
-	flowEventLogger.LogPair(func() error {
-		return nil
-	}, "testing %s", "logging")
 	originalAction := handler.action
 	handler.action = func(data T) (error, T) {
-		flowEventLogger.LogEvent("executing handler: %d", handler.id)
+		flowEventLogger.LogEvent(actionExecutionStarted, handler.id)
 		err, res := originalAction(data)
 		if err == nil {
-			flowEventLogger.LogEvent("handler: %d executed successfully", handler.id)
+			flowEventLogger.LogEvent(actionExecutionFinished, handler.id)
 		}
 		return err, res
 	}
 
 	originalOnError := handler.onError
 	handler.onError = func(handler *Handler[T], err error) {
-		flowEventLogger.LogEvent("executing onError for handler: %d", handler.id)
+		flowEventLogger.LogEvent(actionOnError, handler.id)
 		originalOnError(handler, err)
-		flowEventLogger.LogEvent("onError for handler: %d executed successfully", handler.id)
 	}
 }
