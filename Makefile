@@ -1,5 +1,8 @@
-install:
+install: build
 	go install
 
-build:
+build: test
 	go build -o bin/dh.exe main.go
+
+test:
+	go test -v ./...
