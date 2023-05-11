@@ -61,7 +61,7 @@ func (r *Mrh) Run(issue string) {
 	)
 	err = errors.Join(err)
 	if err != nil {
-		logger.Fatalf("%s")
+		logger.Fatalf("%s", err.Error())
 		return
 	}
 	if !r.Done {
