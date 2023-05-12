@@ -6,9 +6,9 @@ import (
 )
 
 func Test_EffectHandler_ExecuteEffectFlow(t *testing.T) {
-	err, f := NewEffectFlow(&Opts{Name: "TExecuteEffectFlow"}, nil,
-		NewHandler(func(data any) (error, any) { return nil, "" }, nil),
-		NewHandler(func(data any) (error, any) { return nil, "" }, nil),
+	f, err := NewEffectFlow(&Opts{Name: "TExecuteEffectFlow"}, nil,
+		NewHandler(func(data any) (any, error) { return "", nil }, nil),
+		NewHandler(func(data any) (any, error) { return "", nil }, nil),
 	)
 	if err != nil {
 		t.Fatalf("error during creation of flow: %s", err.Error())
@@ -34,48 +34,48 @@ func Test_EffectHandler_ExecuteEffectFlow(t *testing.T) {
 }
 
 func Test_NewEffectFlow(t *testing.T) {
-	handler0 := NewHandler(func(data any) (error, any) { return nil, "" }, nil)
-	handler1 := NewHandler(func(data any) (error, any) { return nil, "" }, nil)
-	handler2 := NewHandler(func(data any) (error, any) { return nil, "" }, nil)
+	handler0 := NewHandler(func(data any) (any, error) { return "", nil }, nil)
+	handler1 := NewHandler(func(data any) (any, error) { return "", nil }, nil)
+	handler2 := NewHandler(func(data any) (any, error) { return "", nil }, nil)
 
-	err, flow := NewEffectFlow(&Opts{Name: "TNewEffectFlow"}, nil, handler0, handler1, handler2)
+	f, err := NewEffectFlow(&Opts{Name: "TNewEffectFlow"}, nil, handler0, handler1, handler2)
 	if err != nil {
-		t.Errorf("error during creation of flow: %s", err.Error())
+		t.Errorf("error during creation of f: %s", err.Error())
 	}
 
 	// check first handler
-	if flow.firstHandler != handler0 {
+	if f.firstHandler != handler0 {
 		t.FailNow()
 	}
-	if flow.firstHandler.next != handler1 {
+	if f.firstHandler.next != handler1 {
 		t.FailNow()
 	}
-	if flow.firstHandler.prev != nil {
+	if f.firstHandler.prev != nil {
 		t.FailNow()
 	}
 
 	// check second handler
-	if flow.firstHandler.next.prev != handler0 {
+	if f.firstHandler.next.prev != handler0 {
 		t.FailNow()
 	}
-	if flow.firstHandler.next.next != handler2 {
+	if f.firstHandler.next.next != handler2 {
 		t.FailNow()
 	}
 
 	//	check third handler
-	if flow.firstHandler.next.next != handler2 {
+	if f.firstHandler.next.next != handler2 {
 		t.FailNow()
 	}
-	if flow.firstHandler.next.next.prev != handler1 {
+	if f.firstHandler.next.next.prev != handler1 {
 		t.FailNow()
 	}
-	if flow.firstHandler.next.next.next != nil {
+	if f.firstHandler.next.next.next != nil {
 		t.FailNow()
 	}
 }
 
 func Test_NewFlow_minHandlers(t *testing.T) {
-	err, _ := newFlow(&Opts{Name: "TMinHandlers"}, nil, NewHandler(func(data any) (error, any) { return nil, "" }, nil))
+	_, err := newFlow(&Opts{Name: "TMinHandlers"}, nil, NewHandler(func(data any) (any, error) { return "", nil }, nil))
 	if err == nil {
 		t.FailNow()
 	}
@@ -86,13 +86,19 @@ func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 	in := "hello"
 	expectedError := errors.New("shit happens")
 
-	handler0 := NewHandler(func(data any) (error, any) { return nil, "" }, func(handler *Handler[any], err error) {
+	handler0 := NewHandler(func(data any) (any, error) {
+		return "", nil
+	}, func(handler *Handler[any], err error) {
 		in = "error"
 	})
-	handler1 := NewHandler(func(data any) (error, any) { return nil, "" }, nil)
-	handler2 := NewHandler(func(data any) (error, any) { return expectedError, nil }, nil)
+	handler1 := NewHandler(func(data any) (any, error) {
+		return "", nil
+	}, nil)
+	handler2 := NewHandler(func(data any) (any, error) {
+		return nil, expectedError
+	}, nil)
 
-	err, f := NewEffectFlow(&Opts{Name: "TErrorPropagation"}, nil, handler0, handler1, handler2)
+	f, err := NewEffectFlow(&Opts{Name: "TErrorPropagation"}, nil, handler0, handler1, handler2)
 	if err != nil {
 		t.Fatalf("error during creation of flow: %s", err.Error())
 	}

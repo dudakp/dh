@@ -1,7 +1,7 @@
 package flow
 
 /**
-TODO: create structured event logger - outputted to console && file | IN_PROGRESS
+TODO: create structured event log - outputted to console && file | IN_PROGRESS
 	data recorded in eventLog: flow id, flow name, handler id, timestamp, handler data, action successful, onError called, onTerminalError called
 
 TODO: create operators
@@ -9,19 +9,23 @@ TODO: create operators
 	* map
 
 TODO: create execution strategies
-	* sequential - DONE
-	* parallel
+	* sequential | DONE
+	* parallel | IN_PROGRESS
 	* synchronized
 
 TODO: create flow types:
-	* ApiFlow
-		flow calling REST API
 	* TemplatedFlow
 		flow definition in file, calling scripts (bash scripts)
+		flow loaded from event log
+	* ApiFlow
+		flow calling REST API
+
+TODO: create event log parser
+	nice to have - not priority
 */
 
 import (
-	"dh/internal/logging"
+	"dh/pkg/logging"
 	"errors"
 	"fmt"
 )
@@ -42,16 +46,18 @@ var (
 			Format(logging.EventLoggerSubjectFormat, logging.EventLoggerEventFormat)
 )
 
-type HandlerAction[T any] func(T) (error, T)
+type HandlerAction[T any] func(T) (T, error)
 type HandlerErrorAction[T any] func(*Handler[T], error)
 
 type Handler[T any] struct {
-	action        func(T) (error, T)
-	onError       func(*Handler[T], error)
-	id            int
-	next          *Handler[T]
-	prev          *Handler[T]
-	wrappedAction func(T) (error, T)
+	action  HandlerAction[T]
+	onError HandlerErrorAction[T]
+
+	id       int
+	parallel bool
+
+	next *Handler[T]
+	prev *Handler[T]
 }
 
 type Opts struct {
@@ -85,9 +91,15 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 	return res
 }
 
-func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (error, *flow[T]) {
+func NewParallelHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *Handler[T] {
+	res := NewHandler(action, onError)
+	res.parallel = true
+	return res
+}
+
+func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (*flow[T], error) {
 	if handlers == nil || len(handlers) < 2 {
-		return errors.New("minimum 2 handlers need to be specified"), nil
+		return nil, errors.New("minimum 2 handlers need to be specified")
 	}
 	if flowOpts == nil {
 		// TODO: add random string generation
@@ -102,7 +114,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 	firstHandler.next = handlers[1]
 	for i, handler := range handlers {
 		if handler.action == nil {
-			return HandlerMissingActionErr, nil
+			return nil, HandlerMissingActionErr
 		}
 		handler.id = i
 		if i == 0 {
@@ -116,12 +128,12 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 		}
 		i += 1
 	}
-	return nil, &flow[T]{
+	return &flow[T]{
 		initialData:     initialData,
 		opts:            *flowOpts,
 		terminalOnError: terminalOnError,
 		firstHandler:    firstHandler,
-	}
+	}, nil
 }
 
 func (r flow[T]) handleError(handler *Handler[T], err error) error {
@@ -145,13 +157,13 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 
 func withEventLog[T any](handler *Handler[T]) {
 	originalAction := handler.action
-	handler.action = func(data T) (error, T) {
+	handler.action = func(data T) (T, error) {
 		flowEventLogger.LogEvent(actionExecutionStarted, handler.id)
-		err, res := originalAction(data)
+		res, err := originalAction(data)
 		if err == nil {
 			flowEventLogger.LogEvent(actionExecutionFinished, handler.id)
 		}
-		return err, res
+		return res, err
 	}
 
 	originalOnError := handler.onError

@@ -1,9 +1,9 @@
 package mrh
 
 import (
-	"dh/internal/logging"
 	"dh/pkg/executor"
 	"dh/pkg/flow"
+	"dh/pkg/logging"
 	"errors"
 )
 
@@ -19,11 +19,11 @@ type Mrh struct {
 
 func (r *Mrh) Run(issue string) {
 	var err error
-	err, notDoneFlow := flow.NewEffectFlow(
+	notDoneFlow, err := flow.NewEffectFlow(
 		&flow.Opts{Name: "not done", ExecuteOnErrorAlways: true},
 		r.rollback,
 		flow.NewHandler(
-			func(data any) (error, any) {
+			func(data any) (any, error) {
 				err := r.GitExecutor.Stash(false)
 				return err, nil
 			},
@@ -31,7 +31,7 @@ func (r *Mrh) Run(issue string) {
 				err = errors.Join(handlerErr)
 			}),
 		flow.NewHandler(
-			func(data any) (error, any) {
+			func(data any) (any, error) {
 				err := r.GitExecutor.Checkout(r.BranchType + "/" + issue)
 				return err, nil
 			},
@@ -39,11 +39,11 @@ func (r *Mrh) Run(issue string) {
 				err = errors.Join(handlerErr)
 			}),
 	)
-	err, doneFlow := flow.NewEffectFlow(
+	doneFlow, err := flow.NewEffectFlow(
 		&flow.Opts{Name: "done", ExecuteOnErrorAlways: true},
 		r.rollback,
 		flow.NewHandler(
-			func(data any) (error, any) {
+			func(data any) (any, error) {
 				err := r.GitExecutor.Checkout("develop")
 				return err, nil
 			},
@@ -51,7 +51,7 @@ func (r *Mrh) Run(issue string) {
 				err = errors.Join(handlerErr)
 			}),
 		flow.NewHandler(
-			func(data any) (error, any) {
+			func(data any) (any, error) {
 				err := r.GitExecutor.Stash(true)
 				return err, nil
 			},

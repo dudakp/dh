@@ -7,7 +7,7 @@ TODO: create executor types
 
 import (
 	"bytes"
-	"dh/internal/logging"
+	"dh/pkg/logging"
 	"fmt"
 	"os/exec"
 )

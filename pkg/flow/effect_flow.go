@@ -7,16 +7,16 @@ type EffectFlow[T any] struct {
 // NewEffectFlow creates effect flow.
 // If terminalOnError is specified this function will be used as global error callback and no handler onError functions will be called.
 // to override this behavior look at Opts.ExecuteOnErrorAlways
-func NewEffectFlow(flowOpts *Opts, terminalOnError func(err error), handlers ...*Handler[any]) (error, *EffectFlow[any]) {
+func NewEffectFlow(flowOpts *Opts, terminalOnError func(err error), handlers ...*Handler[any]) (*EffectFlow[any], error) {
 	var baseHandlers []*Handler[any]
 	for _, handler := range handlers {
 		baseHandlers = append(baseHandlers, handler)
 	}
 	var empty any
-	err, f := newFlow(flowOpts, terminalOnError, empty, baseHandlers...)
-	return err, &EffectFlow[any]{
+	f, err := newFlow(flowOpts, terminalOnError, empty, baseHandlers...)
+	return &EffectFlow[any]{
 		flow: f,
-	}
+	}, err
 }
 
 func ExecuteEffectFlow(f *EffectFlow[any]) error {
@@ -28,7 +28,7 @@ func ExecuteEffectFlow(f *EffectFlow[any]) error {
 
 func executeEffect(handler *Handler[any], f *EffectFlow[any]) error {
 	var empty any
-	err, _ := handler.action(empty)
+	_, err := handler.action(empty)
 	if err != nil {
 		return f.flow.handleError(handler, err)
 	} else {

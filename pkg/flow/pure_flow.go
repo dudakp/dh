@@ -12,7 +12,7 @@ func NewPureFlow[T any](flowOpts *Opts, terminalOnError func(err error), initial
 	for _, handler := range handlers {
 		baseHandlers = append(baseHandlers, handler)
 	}
-	err, f := newFlow(flowOpts, terminalOnError, initialData, baseHandlers...)
+	f, err := newFlow(flowOpts, terminalOnError, initialData, baseHandlers...)
 	return err, &PureFlow[T]{
 		flow: f,
 	}
@@ -26,7 +26,7 @@ func ExecutePureFlow(f *PureFlow[any]) error {
 }
 
 func executePure[T any](handler *Handler[any], handlerOutput T, f *PureFlow[any]) error {
-	err, out := handler.action(handlerOutput)
+	out, err := handler.action(handlerOutput)
 	if err != nil {
 		return f.flow.handleError(handler, err)
 	} else {
