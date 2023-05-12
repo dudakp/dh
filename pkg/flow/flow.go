@@ -8,10 +8,19 @@ TODO: create operators
 	* pipe
 	* map
 
+
 TODO: create execution strategies
 	* sequential | DONE
 	* parallel | IN_PROGRESS
-	* synchronized
+		identify groups of parallel adjacent parallel handlers in flow and create fork-join
+			all handlers in group need to communicate via channel, if execution of one starts this handler needs
+			to notify all in group to start, also sync handler that is after async group needs to receive message that
+			all async handlers have finished and can start its execution
+		parallel handler will be supported only in EffectFlow for now (reduce operation would be needed on join) | DONE
+			EffectFlow does not have any data so nothing to worry about
+	* conditional
+		based on predicate in handler, the execution will continue to specified handler
+
 
 TODO: create flow types:
 	* TemplatedFlow
@@ -19,6 +28,7 @@ TODO: create flow types:
 		flow loaded from event log
 	* ApiFlow
 		flow calling REST API
+
 
 TODO: create event log parser
 	nice to have - not priority
@@ -39,7 +49,8 @@ const (
 )
 
 var (
-	HandlerMissingActionErr = errors.New("no action function specified for handler")
+	HandlerMissingActionErr     = errors.New("no action function specified for handler")
+	ParallelHandlerNotSupported = errors.New("parallel handler is supported only in EffectFlow")
 
 	logger          = logging.GetLoggerFor("flow")
 	flowEventLogger = logging.GetEventLoggerFor("flow").
@@ -109,12 +120,25 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 	flowEventLogger.Subject(fmt.Sprintf(subjectFormat, flowOpts.Name))
 	logger.Printf("constructing flow with name: %s", flowOpts.Name)
 
+	err := chainHandlers(handlers)
+	if err != nil {
+		return nil, err
+	}
+	return &flow[T]{
+		initialData:     initialData,
+		opts:            *flowOpts,
+		terminalOnError: terminalOnError,
+		firstHandler:    handlers[0],
+	}, nil
+}
+
+func chainHandlers[T any](handlers []*Handler[T]) error {
 	var firstHandler = handlers[0]
 	firstHandler.prev = nil
 	firstHandler.next = handlers[1]
 	for i, handler := range handlers {
 		if handler.action == nil {
-			return nil, HandlerMissingActionErr
+			return HandlerMissingActionErr
 		}
 		handler.id = i
 		if i == 0 {
@@ -128,12 +152,20 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 		}
 		i += 1
 	}
-	return &flow[T]{
-		initialData:     initialData,
-		opts:            *flowOpts,
-		terminalOnError: terminalOnError,
-		firstHandler:    firstHandler,
-	}, nil
+	return nil
+}
+
+func execute[T any](handler *Handler[any], handlerOutput T, f *flow[any]) error {
+	out, err := handler.action(handlerOutput)
+	if err != nil {
+		return f.handleError(handler, err)
+	} else {
+		if handler.next == nil {
+			return nil
+		} else {
+			return execute(handler.next, out, f)
+		}
+	}
 }
 
 func (r flow[T]) handleError(handler *Handler[T], err error) error {

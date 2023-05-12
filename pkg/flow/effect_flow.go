@@ -28,14 +28,5 @@ func ExecuteEffectFlow(f *EffectFlow[any]) error {
 
 func executeEffect(handler *Handler[any], f *EffectFlow[any]) error {
 	var empty any
-	_, err := handler.action(empty)
-	if err != nil {
-		return f.flow.handleError(handler, err)
-	} else {
-		if handler.next == nil {
-			return nil
-		} else {
-			return executeEffect(handler.next, f)
-		}
-	}
+	return execute(handler, empty, f.flow)
 }
