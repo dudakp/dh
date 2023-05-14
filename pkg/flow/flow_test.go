@@ -2,6 +2,8 @@ package flow
 
 import (
 	"errors"
+	"strconv"
+	"sync/atomic"
 	"testing"
 )
 
@@ -81,6 +83,8 @@ func Test_NewFlow_minHandlers(t *testing.T) {
 	}
 }
 
+// TODO: add scenario where handler1 has on error, handler2 does not have onError, handler3 has onError and error occurs in hadler3
+// all onError handlers need to be called! (1, 2 and 3)
 func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 	in := "hello"
 	expectedError := errors.New("shit happens")
@@ -194,23 +198,64 @@ func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 }
 
 func Test_ExecuteParallelEffectFlow(t *testing.T) {
+	var i int32
 	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
 		NewParallelHandlerGroup(
 			NewHandler(func(t any) (any, error) {
+				atomic.AddInt32(&i, 100)
 				return "", nil
 			}, nil),
 			NewHandler(func(t any) (any, error) {
+				atomic.AddInt32(&i, 20)
 				return "", nil
 			}, nil),
 		),
 		NewHandler(func(t any) (any, error) {
+			atomic.AddInt32(&i, 3)
 			return "", nil
 		}, nil),
 	)
 	if err != nil {
 		t.FailNow()
 	}
-	// TODO: why only handler -2 is starting?
-	f.Start()
+	err = f.Start()
+	if err != nil {
+		t.Log(err.Error())
+		t.FailNow()
+	}
+	want := "123"
+	r := strconv.Itoa(int(i))
+	if r != want {
+		t.Fatalf("want: %s, got: %s", want, r)
+	}
+}
+
+func Test_ExecuteParallelEffectFlow_errorInParallelHandler(t *testing.T) {
+	var i int32
+	expectedError := errors.New("shit happens")
+	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
+		NewParallelHandlerGroup(
+			NewHandler(func(t any) (any, error) {
+				atomic.AddInt32(&i, 100)
+				return "", nil
+			}, nil),
+			NewHandler(func(t any) (any, error) {
+				atomic.AddInt32(&i, 20)
+				return nil, expectedError
+			}, nil),
+		),
+		NewHandler(func(t any) (any, error) {
+			atomic.AddInt32(&i, 3)
+			return "", nil
+		}, nil),
+	)
+	if err != nil {
+		t.FailNow()
+	}
+	err = f.Start()
+	if err != nil {
+		t.Log(err.Error())
+		t.FailNow()
+	}
 
 }
