@@ -5,10 +5,9 @@ type GitExecutor struct {
 }
 
 func NewGitExecutor() *GitExecutor {
-	res := &GitExecutor{
+	return &GitExecutor{
 		newFileExecutor("git"),
 	}
-	return res
 }
 
 func (r *GitExecutor) Checkout(issueBranch string) error {
@@ -30,7 +29,7 @@ func (r *GitExecutor) Stash(pop bool) error {
 }
 
 func (r *GitExecutor) stashHasEntries() bool {
-	err, stdout, _ := r.executeWithResult("stash", "list")
+	stdout, err := r.executeWithResult("stash", "list")
 	if err != nil {
 		logger.Fatal(err.Error())
 		return false

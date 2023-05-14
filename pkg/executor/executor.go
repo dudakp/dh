@@ -17,7 +17,7 @@ var (
 )
 
 type Executor interface {
-	executeWithResult(command string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer)
+	executeWithResult(command string, flags ...string) (*bytes.Buffer, error)
 	execute(command string, flags ...string) error
 }
 
@@ -41,30 +41,26 @@ func findExecutable(executableName string) string {
 	return path
 }
 
-// executeWithResult executes given command with flags and returns stdout and stderr buffers containing executed command result.
-// Additionally, error is returned if command ended with non-zero status
-// stdout is nil if error is not-nil and stderr is nil if error is nil
-func (r *FileExecutor) executeWithResult(command string, flags ...string) (error, *bytes.Buffer, *bytes.Buffer) {
+// executeWithResult executes given command with flags and returns stdout containing executed command result.
+func (r *FileExecutor) executeWithResult(command string, flags ...string) (stdout *bytes.Buffer, err error) {
 	argWithFlags := []string{command}
 	argWithFlags = append(argWithFlags, flags...)
 	cmd := exec.Command(r.path, argWithFlags...)
 	logger.Printf("executing command: %s", cmd.String())
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
+	stdout = bytes.NewBuffer(out)
 	if err != nil {
-		logger.Printf(fmt.Errorf("%w: %s", err, stderr.String()).Error())
-		return fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
-			err, argWithFlags, stderr.String(),
-		), nil, &stderr
+		logger.Printf(fmt.Errorf("%w: %s", err, stdout.String()).Error())
+		return stdout, fmt.Errorf("\n\t%w: unable to execute git command: %s\n\tcall ended with error: %s",
+			err, argWithFlags, stdout.String(),
+		)
 	}
 	logger.Print(stdout.String())
-	return nil, &stdout, nil
+	return
 }
 
 // execute does same thing as executeWithResult but, only error is returned upon non-zero exist status of command
 func (r *FileExecutor) execute(command string, flags ...string) error {
-	err, _, _ := r.executeWithResult(command, flags...)
+	_, err := r.executeWithResult(command, flags...)
 	return err
 }
