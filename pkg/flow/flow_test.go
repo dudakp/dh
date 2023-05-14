@@ -200,7 +200,7 @@ func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 func Test_ExecuteParallelEffectFlow(t *testing.T) {
 	var i int32
 	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
-		NewParallelHandlerGroup(
+		NewParallelHandlerGroup(nil,
 			NewHandler(func(t any) (any, error) {
 				atomic.AddInt32(&i, 100)
 				return "", nil
@@ -234,28 +234,72 @@ func Test_ExecuteParallelEffectFlow_errorInParallelHandler(t *testing.T) {
 	var i int32
 	expectedError := errors.New("shit happens")
 	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
-		NewParallelHandlerGroup(
+		NewParallelHandlerGroup(nil,
 			NewHandler(func(t any) (any, error) {
-				atomic.AddInt32(&i, 100)
 				return "", nil
-			}, nil),
+			}, func(h *Handler[any], err error) {
+				atomic.AddInt32(&i, 100)
+			}),
 			NewHandler(func(t any) (any, error) {
-				atomic.AddInt32(&i, 20)
 				return nil, expectedError
-			}, nil),
+			}, func(h *Handler[any], err error) {
+				atomic.AddInt32(&i, 20)
+			}),
 		),
 		NewHandler(func(t any) (any, error) {
-			atomic.AddInt32(&i, 3)
 			return "", nil
-		}, nil),
+		}, func(h *Handler[any], err error) {
+			atomic.AddInt32(&i, 3)
+		}),
 	)
 	if err != nil {
 		t.FailNow()
 	}
 	err = f.Start()
+	if err == nil {
+		t.Fatalf("error expected")
+	}
+	want := "120"
+	r := strconv.Itoa(int(i))
+	if r != want {
+		t.Fatalf("want: %s, got: %s", want, r)
+	}
+}
+
+func Test_ExecuteParallelEffectFlow_errorInHandler(t *testing.T) {
+	var i int32
+	expectedError := errors.New("shit happens")
+	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
+		NewParallelHandlerGroup(func(h *Handler[any], err error) {
+			atomic.AddInt32(&i, 1)
+		},
+			NewHandler(func(t any) (any, error) {
+				return "", nil
+			}, func(h *Handler[any], err error) {
+				atomic.AddInt32(&i, 100)
+			}),
+			NewHandler(func(t any) (any, error) {
+				return "", nil
+			}, func(h *Handler[any], err error) {
+				atomic.AddInt32(&i, 20)
+			}),
+		),
+		NewHandler(func(t any) (any, error) {
+			return nil, expectedError
+		}, func(h *Handler[any], err error) {
+			atomic.AddInt32(&i, 100)
+		}),
+	)
 	if err != nil {
-		t.Log(err.Error())
 		t.FailNow()
 	}
-
+	err = f.Start()
+	if err == nil {
+		t.Fatalf("error expected")
+	}
+	want := "101"
+	r := strconv.Itoa(int(i))
+	if r != want {
+		t.Fatalf("want: %s, got: %s", want, r)
+	}
 }

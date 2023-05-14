@@ -1,8 +1,6 @@
 package flow
 
 /**
-TODO: create structured event log - outputted to console && file | IN_PROGRESS
-	data recorded in eventLog: flow id, flow name, handler id, timestamp, handler data, action successful, onError called, onTerminalError called
 
 TODO: create operators
 	* pipe
@@ -10,14 +8,6 @@ TODO: create operators
 
 
 TODO: create execution strategies
-	* sequential | DONE
-	* parallel | IN_PROGRESS
-		identify groups of parallel adjacent parallel handlers in flow and create fork-join
-			all handlers in group need to communicate via channel, if execution of one starts this handler needs
-			to notify all in group to start, also sync handler that is after async group needs to receive message that
-			all async handlers have finished and can start its execution
-		parallel handler will be supported only in EffectFlow for now (reduce operation would be needed on join) | DONE
-			EffectFlow does not have any data so nothing to worry about
 	* conditional
 		based on predicate in handler, the execution will continue to specified handler
 
@@ -75,6 +65,8 @@ type Handler[T any] struct {
 	prev *Handler[T]
 	// pGroup contains parallel handlers that can be executed in parallel
 	pGroup []*Handler[T]
+	// isParallel is marking handler that is part of pGroup
+	isParallel bool
 }
 
 type Opts struct {
@@ -93,32 +85,8 @@ type flow[T any] struct {
 	terminalOnErrorExecuted bool
 }
 
-func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *Handler[T] {
-	var res = &Handler[T]{
-		action:  action,
-		onError: onError,
-	}
-	if res.onError == nil {
-		logger.Printf("missing onError function for handler. creating default onError")
-		res.onError = func(handler *Handler[T], err error) {
-			logger.Printf("calling default onError for handler: %d", handler.id)
-		}
-	}
-	withEventLog(res)
-	return res
-}
-
-func NewParallelHandlerGroup[T any](handlers ...*Handler[T]) *Handler[T] {
-	for i, handler := range handlers {
-		handler.id = -(1 + i)
-	}
-	// TODO: try to use NewHandler
-	return &Handler[T]{
-		pGroup: handlers,
-		onError: func(handler *Handler[T], err error) {
-			flowEventLogger.LogEvent(actionOnErrorPgroup, handler.id)
-		},
-	}
+func (r *flow[T]) Start() error {
+	return execute(r.firstHandler, r.initialData, r)
 }
 
 func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (*flow[T], error) {
@@ -146,8 +114,41 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 	}, nil
 }
 
-func (r *flow[T]) Start() error {
-	return execute(r.firstHandler, r.initialData, r)
+func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *Handler[T] {
+	var res = &Handler[T]{
+		action:  action,
+		onError: onError,
+	}
+	if res.onError == nil {
+		logger.Printf("missing onError function for handler. creating default onError")
+		res.onError = func(handler *Handler[T], err error) {
+			logger.Printf("calling default onError for handler: %d", handler.id)
+		}
+	}
+	return withEventLog(res)
+}
+
+// NewParallelHandlerGroup creates handler wrapping multiple handlers marked for parallel execution.
+// if any error occurs in parallel handler, onError of all handlers in ParallelGroup are called,
+// if error occurs in handler ordinary handler that was called after ParallelGroup,
+// only ParallelGroup onError will be executed
+func NewParallelHandlerGroup[T any](onError HandlerErrorAction[T], handlers ...*Handler[T]) *Handler[T] {
+	for i, handler := range handlers {
+		handler.id = -(1 + i)
+		handler.isParallel = true
+	}
+	e := onError
+	if onError == nil {
+		e = func(h *Handler[T], err error) {
+			logger.Printf("calling default onError for handler: %d", h.id)
+		}
+	}
+	return withEventLog(
+		// TODO: try to use NewHandler
+		&Handler[T]{
+			pGroup:  handlers,
+			onError: e,
+		})
 }
 
 func (r *flow[T]) handleError(handler *Handler[T], err error) error {
@@ -190,26 +191,39 @@ func execute[T any](handler *Handler[T], handlerOutput T, f *flow[T]) error {
 	var out T
 	var err error
 
+	// for execution of pGroup call special method for execution of pGroups
 	if handler.isPgroup() {
 		err = handler.executePgroup(f)
 	} else {
 		out, err = handler.action(handlerOutput)
 	}
-	if err != nil {
-		return f.handleError(handler, err)
-	} else {
+	if err == nil {
 		if handler.next == nil {
 			return nil
 		} else {
 			return execute(handler.next, out, f)
 		}
+	} else if handler.isPgroup() {
+		// parallel handlers in pGroup are not linked so theirs onError needed to be called like this
+		// TODO: maybe run onError in parallel?
+		for _, h := range handler.pGroup {
+			h.onError(h, err)
+		}
+		return err
+	} else if handler.isParallel {
+		// parallel onError handler is called in else-if above so here it needs to be skipped
+		return err
+	} else {
+		// regular error handling for sequential handlers
+		return f.handleError(handler, err)
 	}
 }
 
 func (r *Handler[T]) executePgroup(f *flow[T]) error {
-	eg, ctx := errgroup.WithContext(context.Background())
+	eg, _ := errgroup.WithContext(context.Background())
 	for _, handler := range r.pGroup {
 		var empty T
+		// go-specific hack for parallel function execution in for loop
 		handler := handler
 		eg.Go(func() error {
 			res := execute(handler, empty, f)
@@ -217,10 +231,6 @@ func (r *Handler[T]) executePgroup(f *flow[T]) error {
 		})
 	}
 	// TODO: think about error propagation strategies for pGroup
-	err := ctx.Err()
-	if err != nil {
-		logger.Print(err.Error())
-	}
 	return eg.Wait()
 }
 
@@ -235,7 +245,7 @@ func executeErrorHandler[T any](handler *Handler[T], err error) {
 	}
 }
 
-func withEventLog[T any](handler *Handler[T]) {
+func withEventLog[T any](handler *Handler[T]) *Handler[T] {
 	originalAction := handler.action
 	handler.action = func(data T) (T, error) {
 		flowEventLogger.LogEvent(actionExecutionStarted, handler.id)
@@ -248,7 +258,12 @@ func withEventLog[T any](handler *Handler[T]) {
 
 	originalOnError := handler.onError
 	handler.onError = func(handler *Handler[T], err error) {
-		flowEventLogger.LogEvent(actionOnError, handler.id)
+		if handler.isPgroup() {
+			flowEventLogger.LogEvent(actionOnErrorPgroup, handler.id)
+		} else {
+			flowEventLogger.LogEvent(actionOnError, handler.id)
+		}
 		originalOnError(handler, err)
 	}
+	return handler
 }
