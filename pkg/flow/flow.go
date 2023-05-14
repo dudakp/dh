@@ -35,9 +35,12 @@ TODO: create event log parser
 */
 
 import (
+	"context"
 	"dh/pkg/logging"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
+	"sync"
 )
 
 const (
@@ -60,15 +63,24 @@ var (
 type HandlerAction[T any] func(T) (T, error)
 type HandlerErrorAction[T any] func(*Handler[T], error)
 
+//type ParallelHandler[T any] Handler[T]
+
 type Handler[T any] struct {
 	action  HandlerAction[T]
 	onError HandlerErrorAction[T]
 
-	id       int
-	parallel bool
+	id int
 
 	next *Handler[T]
 	prev *Handler[T]
+	// pGroup contains parallel handlers that can be executed in parallel
+	pGroup []*Handler[T]
+
+	// sig is used only with Handler with pGroup handlers for signaling the next handler that parallel execution
+	//has finished and next handler can start its execution
+	sig *chan bool
+	// wg is used for synchronizing execution of every ParallelHandler in pGroup
+	wg *sync.WaitGroup
 }
 
 type Opts struct {
@@ -102,10 +114,17 @@ func NewHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *
 	return res
 }
 
-func NewParallelHandler[T any](action HandlerAction[T], onError HandlerErrorAction[T]) *Handler[T] {
-	res := NewHandler(action, onError)
-	res.parallel = true
-	return res
+func NewParallelHandlerGroup[T any](handlers ...*Handler[T]) *Handler[T] {
+	var wg *sync.WaitGroup
+	var sig = make(chan bool)
+	for i, handler := range handlers {
+		handler.id = -(1 + i)
+	}
+	return &Handler[T]{
+		pGroup: handlers,
+		wg:     wg,
+		sig:    &sig,
+	}
 }
 
 func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (*flow[T], error) {
@@ -124,6 +143,7 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 	if err != nil {
 		return nil, err
 	}
+
 	return &flow[T]{
 		initialData:     initialData,
 		opts:            *flowOpts,
@@ -132,12 +152,29 @@ func newFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData
 	}, nil
 }
 
+func (r *flow[T]) Start() error {
+	return execute(r.firstHandler, r.initialData, r)
+}
+
+func (r *flow[T]) handleError(handler *Handler[T], err error) error {
+	if r.terminalOnError != nil && !r.terminalOnErrorExecuted {
+		logger.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
+		r.terminalOnError(err)
+		if !r.opts.ExecuteOnErrorAlways {
+			return err
+		}
+	}
+	executeErrorHandler(handler, err)
+	return err
+}
+
 func chainHandlers[T any](handlers []*Handler[T]) error {
 	var firstHandler = handlers[0]
 	firstHandler.prev = nil
 	firstHandler.next = handlers[1]
 	for i, handler := range handlers {
-		if handler.action == nil {
+		// handlers containing pGroup does not need to have an action
+		if handler.action == nil && !handler.isPgroup() {
 			return HandlerMissingActionErr
 		}
 		handler.id = i
@@ -155,29 +192,38 @@ func chainHandlers[T any](handlers []*Handler[T]) error {
 	return nil
 }
 
-func execute[T any](handler *Handler[any], handlerOutput T, f *flow[any]) error {
-	out, err := handler.action(handlerOutput)
-	if err != nil {
-		return f.handleError(handler, err)
+func execute[T any](handler *Handler[T], handlerOutput T, f *flow[T]) error {
+	// for parallel handel group execute group
+	if handler.isPgroup() {
+		return handler.executePgroup(f)
 	} else {
-		if handler.next == nil {
-			return nil
+		// for simple handler execute
+		out, err := handler.action(handlerOutput)
+		if err != nil {
+			return f.handleError(handler, err)
 		} else {
-			return execute(handler.next, out, f)
+			if handler.next == nil {
+				return nil
+			} else {
+				return execute(handler.next, out, f)
+			}
 		}
 	}
 }
 
-func (r flow[T]) handleError(handler *Handler[T], err error) error {
-	if r.terminalOnError != nil && !r.terminalOnErrorExecuted {
-		logger.Printf("calling global error fallback due to error %s in handler: %d", err.Error(), handler.id)
-		r.terminalOnError(err)
-		if !r.opts.ExecuteOnErrorAlways {
-			return err
-		}
+func (r *Handler[T]) executePgroup(f *flow[T]) error {
+	eg, _ := errgroup.WithContext(context.Background())
+	for _, handler := range r.pGroup {
+		var empty T
+		eg.Go(func() error {
+			return execute(handler, empty, f)
+		})
 	}
-	executeErrorHandler(handler, err)
-	return err
+	return eg.Wait()
+}
+
+func (r *Handler[T]) isPgroup() bool {
+	return r.sig != nil
 }
 
 func executeErrorHandler[T any](handler *Handler[T], err error) {

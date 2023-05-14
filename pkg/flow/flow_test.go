@@ -85,18 +85,6 @@ func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 	in := "hello"
 	expectedError := errors.New("shit happens")
 
-	//handler0 := NewHandler(func(data any) (any, error) {
-	//	return "", nil
-	//}, func(handler *Handler[any], err error) {
-	//	in = "error"
-	//})
-	//handler1 := NewHandler(func(data any) (any, error) {
-	//	return "", nil
-	//}, nil)
-	//handler2 := NewHandler(func(data any) (any, error) {
-	//	return nil, expectedError
-	//}, nil)
-
 	tests := []struct {
 		name  string
 		input *EffectFlow[any]
@@ -203,4 +191,26 @@ func Test_ExecuteEffectFlow_errorPropagation(t *testing.T) {
 
 		})
 	}
+}
+
+func Test_ExecuteParallelEffectFlow(t *testing.T) {
+	f, err := NewEffectFlow(&Opts{Name: "parallelEffectFlow"}, nil,
+		NewParallelHandlerGroup(
+			NewHandler(func(t any) (any, error) {
+				return "", nil
+			}, nil),
+			NewHandler(func(t any) (any, error) {
+				return "", nil
+			}, nil),
+		),
+		NewHandler(func(t any) (any, error) {
+			return "", nil
+		}, nil),
+	)
+	if err != nil {
+		t.FailNow()
+	}
+	// TODO: why only handler -2 is starting?
+	f.Start()
+
 }
