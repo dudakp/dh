@@ -2,10 +2,13 @@ package executor
 
 /**
 
-TODO: loading db connection data from config file
-	* on first usage
 
-TODO: introspect all tables in selected query and generate names of all possible columns
+TODO: loading and validating all templated sql files
+	* scan directory for sql files
+	* create list of executable queries that can be used as CLI parameters
+	* create hints for all leaded and validated templates
+
+TODO: introspect all tables in selected query and generate names of all possible columns (haha, nice to have feature)
 
 
 */
@@ -16,12 +19,18 @@ import (
 )
 
 type SqlExecutor struct {
-	db            *sql.DB
-	templatesPath string
-	templateData  []templateData
+	db *sql.DB
+
+	config       SqlExecutorConfig
+	templateData []TemplateData
 }
 
-type templateData struct {
+type SqlExecutorConfig struct {
+	templatesPath      string `yaml:"templatesPath"`
+	dbConnectionString string `yaml:"dbConnectionString"`
+}
+
+type TemplateData struct {
 	Abr  string
 	Path string
 }
@@ -31,13 +40,13 @@ type simplePredicate struct {
 	arg    any
 }
 
-func NewSqlExecutor(templatesPath string) *SqlExecutor {
+func NewSqlExecutor(config SqlExecutorConfig) *SqlExecutor {
 	return &SqlExecutor{
-		templatesPath: templatesPath,
+		config: config,
 	}
 }
 
-func (r *SqlExecutor) ListAvailableTemplates() []templateData {
+func (r *SqlExecutor) ListAvailableTemplates() []TemplateData {
 	return r.templateData
 }
 
