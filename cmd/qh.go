@@ -10,16 +10,12 @@ import (
 )
 
 var (
-	query       string
-	setConfig   bool
-	sqlExecutor *qh.SqlExecutorService
+	setConfig       bool
+	executorService *qh.SqlExecutorService
 )
 
 func init() {
-	sqlExecutor = qh.NewSqlExecutorService(executor.SqlExecutorConfig{})
-	qhCommand.
-		Flags().
-		StringVarP(&query, "query", "q", "", "SQL query")
+	executorService = qh.NewSqlExecutorService(executor.SqlExecutorConfig{})
 	qhCommand.
 		Flags().
 		BoolVarP(&setConfig, "conf", "c", false, "set config")
@@ -33,15 +29,15 @@ var qhCommand = &cobra.Command{
 }
 
 func runQh(cmd *cobra.Command, args []string) {
-	if sqlExecutor.ConfigIsEmpty() && setConfig {
+	if executorService.ConfigIsEmpty() && !setConfig {
 		fmt.Println("qh is not configured, please use c arg to set configuration")
 	}
 	if setConfig {
-		if m, err := tea.NewProgram(qh.NewViewModel()).Run(); err != nil {
+		if _, err := tea.NewProgram(qh.NewViewModel(executorService)).Run(); err != nil {
 			fmt.Printf("could not start program: %s\n", err)
 			os.Exit(1)
 		}
 		return
 	}
-	sqlExecutor.Run(query)
+	executorService.Run(args[0])
 }

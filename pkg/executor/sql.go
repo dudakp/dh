@@ -26,8 +26,9 @@ type SqlExecutor struct {
 }
 
 type SqlExecutorConfig struct {
-	templatesPath      string `yaml:"templatesPath" placeholder:"Path to sql templates"`
-	dbConnectionString string `yaml:"dbConnectionString" placeholder:"DB connection string"`
+	// do not change order or delete properties!!! this change will need changes in sqlexecutorview.go
+	TemplatesPath      string `yaml:"templatesPath" placeholder:"Path to sql templates"`
+	DbConnectionString string `yaml:"dbConnectionString" placeholder:"DB connection string"`
 }
 
 type TemplateData struct {
@@ -44,6 +45,20 @@ func NewSqlExecutor(config SqlExecutorConfig) *SqlExecutor {
 	return &SqlExecutor{
 		config: config,
 	}
+}
+
+// RunQuery run specified query and return result set as matrix with first how af header
+func (r *SqlExecutor) RunQuery(queryName string) [][]string {
+	n := 2
+	table := make([][]string, n)
+	for i := 0; i < n; i++ {
+		if i == 0 {
+			table[i] = []string{"ID", "TITLE", "AUTHOR"}
+		} else {
+			table[i] = []string{"1", "Return of the king", "J. R. R. Tolkien"}
+		}
+	}
+	return table
 }
 
 func (r *SqlExecutor) ListAvailableTemplates() []TemplateData {

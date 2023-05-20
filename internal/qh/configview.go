@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+const (
+	cpTemplatesFolder = iota
+	cpDbConnectionString
+)
+
 var (
 	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
@@ -34,8 +39,9 @@ func NewViewModel(executorService *SqlExecutorService) model {
 	confType := reflect.TypeOf(executor.SqlExecutorConfig{})
 	numFields := confType.NumField()
 	m := model{
-		executorService: executorService,
-		inputs:          make([]textinput.Model, numFields),
+		executorService:       executorService,
+		inputs:                make([]textinput.Model, numFields),
+		placeholderTagToValue: map[string]string{},
 	}
 
 	var t textinput.Model
@@ -73,14 +79,11 @@ func (r model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
 
-			// Did the user press enter while the submit button was focused?
-			// If so, exit.
 			if s == "enter" && r.focusIndex == len(r.inputs) {
 				r.updateConfig()
 				return r, tea.Quit
 			}
 
-			// Cycle indexes
 			if s == "up" || s == "shift+tab" {
 				r.focusIndex--
 			} else {
@@ -96,7 +99,6 @@ func (r model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds := make([]tea.Cmd, len(r.inputs))
 			for i := 0; i <= len(r.inputs)-1; i++ {
 				if i == r.focusIndex {
-					// Set focused state
 					cmds[i] = r.inputs[i].Focus()
 					r.inputs[i].PromptStyle = focusedStyle
 					r.inputs[i].TextStyle = focusedStyle
@@ -111,10 +113,7 @@ func (r model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, tea.Batch(cmds...)
 		}
 	}
-
-	// Handle character input and blinking
 	cmd := r.updateInputs(msg)
-
 	return r, cmd
 }
 
@@ -132,16 +131,16 @@ func (r model) View() string {
 	if r.focusIndex == len(r.inputs) {
 		button = &focusedButton
 	}
-	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
+	_, err := fmt.Fprintf(&b, "\n\n%s\n\n", *button)
+	if err != nil {
+		return ""
+	}
 
 	return b.String()
 }
 
 func (r *model) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(r.inputs))
-
-	// Only text inputs with Focus() set will respond, so it's safe to simply
-	// update all of them here without any further logic.
 	for i := range r.inputs {
 		r.inputs[i], cmds[i] = r.inputs[i].Update(msg)
 	}
@@ -150,7 +149,16 @@ func (r *model) updateInputs(msg tea.Msg) tea.Cmd {
 }
 
 func (r model) updateConfig() {
-	for _, input := range r.inputs {
-		r.placeholderTagToValue[input.Placeholder] = input.Value()
+	conf := executor.SqlExecutorConfig{}
+	for i, input := range r.inputs {
+		switch i {
+		case cpTemplatesFolder:
+			conf.TemplatesPath = input.Value()
+			break
+		case cpDbConnectionString:
+			conf.DbConnectionString = input.Value()
+			break
+		}
+		r.executorService.WriteConfig(conf)
 	}
 }

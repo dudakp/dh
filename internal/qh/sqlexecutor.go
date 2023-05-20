@@ -12,6 +12,7 @@ import (
 	"dh/pkg/logging"
 	"fmt"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -25,6 +26,7 @@ var (
 type SqlExecutorService struct {
 	executor       *executor.SqlExecutor
 	configFilePath string
+	config         executor.SqlExecutorConfig
 }
 
 func NewSqlExecutorService(config executor.SqlExecutorConfig) *SqlExecutorService {
@@ -34,7 +36,12 @@ func NewSqlExecutorService(config executor.SqlExecutorConfig) *SqlExecutorServic
 	}
 
 	res.configFilePath = createConfigFile()
-	loadConfig(res.configFilePath)
+
+	viper.SetConfigFile(res.configFilePath)
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(res.configFilePath)
+
+	res.config = loadConfig()
 
 	return res
 }
@@ -50,17 +57,33 @@ func (r *SqlExecutorService) ConfigIsEmpty() bool {
 }
 
 func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
+	loadedConfig := loadConfig()
+	if loadedConfig.DbConnectionString != config.DbConnectionString {
+		loadedConfig.DbConnectionString = config.DbConnectionString
+	}
+	if loadedConfig.TemplatesPath != config.TemplatesPath {
+		loadedConfig.TemplatesPath = config.TemplatesPath
+	}
 
+	yamlConf, err := yaml.Marshal(loadedConfig)
+	if err != nil {
+		panic(err)
+	}
+	file, err := os.OpenFile(r.configFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	_, err = file.Write(yamlConf)
+	if err != nil {
+		panic(err)
+	}
 }
 
-func (r *SqlExecutorService) Run(query string) {
-
+func (r *SqlExecutorService) Run(queryName string) {
+	r.executor.RunQuery(queryName)
 }
 
-func loadConfig(configPath string) executor.SqlExecutorConfig {
-	viper.SetConfigFile(configPath)
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(configPath)
+func loadConfig() executor.SqlExecutorConfig {
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
@@ -71,7 +94,6 @@ func loadConfig(configPath string) executor.SqlExecutorConfig {
 		logger.Printf("failed to unmarshall config file! using default")
 		return executor.SqlExecutorConfig{}
 	}
-
 	return *res
 }
 
