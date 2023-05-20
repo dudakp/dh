@@ -26,7 +26,7 @@ var (
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
-type model struct {
+type configModel struct {
 	executorService *SqlExecutorService
 	focusIndex      int
 	inputs          []textinput.Model
@@ -35,10 +35,10 @@ type model struct {
 	placeholderTagToValue map[string]string
 }
 
-func NewViewModel(executorService *SqlExecutorService) model {
+func NewViewModel(executorService *SqlExecutorService) configModel {
 	confType := reflect.TypeOf(executor.SqlExecutorConfig{})
 	numFields := confType.NumField()
-	m := model{
+	m := configModel{
 		executorService:       executorService,
 		inputs:                make([]textinput.Model, numFields),
 		placeholderTagToValue: map[string]string{},
@@ -64,11 +64,11 @@ func NewViewModel(executorService *SqlExecutorService) model {
 	return m
 }
 
-func (r model) Init() tea.Cmd {
+func (r configModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (r model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (r configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -117,7 +117,7 @@ func (r model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-func (r model) View() string {
+func (r configModel) View() string {
 	var b strings.Builder
 
 	for i := range r.inputs {
@@ -139,7 +139,7 @@ func (r model) View() string {
 	return b.String()
 }
 
-func (r *model) updateInputs(msg tea.Msg) tea.Cmd {
+func (r *configModel) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(r.inputs))
 	for i := range r.inputs {
 		r.inputs[i], cmds[i] = r.inputs[i].Update(msg)
@@ -148,7 +148,7 @@ func (r *model) updateInputs(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (r model) updateConfig() {
+func (r configModel) updateConfig() {
 	conf := executor.SqlExecutorConfig{}
 	for i, input := range r.inputs {
 		switch i {

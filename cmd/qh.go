@@ -33,11 +33,18 @@ func runQh(cmd *cobra.Command, args []string) {
 		fmt.Println("qh is not configured, please use c arg to set configuration")
 	}
 	if setConfig {
-		if _, err := tea.NewProgram(qh.NewViewModel(executorService)).Run(); err != nil {
+		configViewModel := qh.NewViewModel(executorService)
+		if _, err := tea.NewProgram(configViewModel).Run(); err != nil {
 			fmt.Printf("could not start program: %s\n", err)
 			os.Exit(1)
 		}
 		return
 	}
-	executorService.Run(args[0])
+
+	res := executorService.Run(args[0])
+	resultSetModel := qh.NewResultModel(res)
+	if _, err := tea.NewProgram(resultSetModel).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
 }

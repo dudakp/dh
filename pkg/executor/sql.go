@@ -2,6 +2,8 @@ package executor
 
 /**
 
+TODO: sql execution
+	* create first implementation of executing query from template
 
 TODO: loading and validating all templated sql files
 	* scan directory for sql files

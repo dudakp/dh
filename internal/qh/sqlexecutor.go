@@ -1,12 +1,5 @@
 package qh
 
-/**
-TODO: loading persistent configuration
-	* create on first usage
-	* load if config exists
-	* provide interface for rewriting config
-*/
-
 import (
 	"dh/pkg/executor"
 	"dh/pkg/logging"
@@ -79,8 +72,8 @@ func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
 	}
 }
 
-func (r *SqlExecutorService) Run(queryName string) {
-	r.executor.RunQuery(queryName)
+func (r *SqlExecutorService) Run(queryName string) [][]string {
+	return r.executor.RunQuery(queryName)
 }
 
 func loadConfig() executor.SqlExecutorConfig {
