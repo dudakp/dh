@@ -29,7 +29,6 @@ var mrhCommand = &cobra.Command{
 }
 
 func mrh(cmd *cobra.Command, args []string) {
-	// TODO: send done argument
 	issue := args[0]
 	mrhService.Run(issue)
 }

@@ -1,4 +1,4 @@
-package sqlexecutor
+package qh
 
 /**
 TODO: loading persistent configuration
@@ -27,14 +27,15 @@ type SqlExecutorService struct {
 }
 
 func NewSqlExecutorService(config executor.SqlExecutorConfig) *SqlExecutorService {
-	configPath := createConfigFile()
-	loadConfig(configPath)
-
 	sqlExecutor := executor.NewSqlExecutor(config)
-
-	return &SqlExecutorService{
+	res := &SqlExecutorService{
 		executor: sqlExecutor,
 	}
+
+	res.configFilePath = createConfigFile()
+	loadConfig(res.configFilePath)
+
+	return res
 }
 
 func (r *SqlExecutorService) ConfigIsEmpty() bool {
@@ -52,33 +53,37 @@ func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
 }
 
 func loadConfig(configPath string) executor.SqlExecutorConfig {
-	viper.SetConfigName("config")
+	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(configPath)
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
-	var res executor.SqlExecutorConfig
+	res := &executor.SqlExecutorConfig{}
 	err = viper.Unmarshal(res)
 	if err != nil {
 		logger.Printf("failed to unmarshall config file! using default")
 		return executor.SqlExecutorConfig{}
 	}
 
-	return res
+	return *res
 }
 
 func createConfigFile() string {
 	// create config file
 	var configPath string
 	if runtime.GOOS == "windows" {
-		configPath = filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"), "AppData", "dh")
+		configPath = filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"), "AppData", "Local", "dh")
 	} else {
 		configPath = filepath.Join("~./dh")
 	}
+	err := os.MkdirAll(configPath, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
 	configPath = filepath.Join(configPath, "config.yaml")
-	_, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	_, err = os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}
