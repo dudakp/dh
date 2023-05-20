@@ -26,8 +26,8 @@ type SqlExecutor struct {
 }
 
 type SqlExecutorConfig struct {
-	templatesPath      string `yaml:"templatesPath"`
-	dbConnectionString string `yaml:"dbConnectionString"`
+	templatesPath      string `yaml:"templatesPath" placeholder:"Path to sql templates"`
+	dbConnectionString string `yaml:"dbConnectionString" placeholder:"DB connection string"`
 }
 
 type TemplateData struct {

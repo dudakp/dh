@@ -13,12 +13,13 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 )
 
 var (
-	logger = logging.GetLoggerFor("flow")
+	logger = logging.GetLoggerFor("sqlexecutorservice")
 )
 
 type SqlExecutorService struct {
@@ -52,6 +53,10 @@ func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
 
 }
 
+func (r *SqlExecutorService) Run(query string) {
+
+}
+
 func loadConfig(configPath string) executor.SqlExecutorConfig {
 	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
@@ -73,12 +78,16 @@ func loadConfig(configPath string) executor.SqlExecutorConfig {
 func createConfigFile() string {
 	// create config file
 	var configPath string
-	if runtime.GOOS == "windows" {
-		configPath = filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"), "AppData", "Local", "dh")
-	} else {
-		configPath = filepath.Join("~./dh")
+	osUser, err := user.Current()
+	if err != nil {
+		panic("unable to get user")
 	}
-	err := os.MkdirAll(configPath, os.ModePerm)
+	if runtime.GOOS == "windows" {
+		configPath = filepath.Join(osUser.HomeDir, "AppData", "Local", "dh")
+	} else {
+		configPath = filepath.Join(osUser.HomeDir, ".dh")
+	}
+	err = os.MkdirAll(configPath, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
