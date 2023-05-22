@@ -4,7 +4,6 @@ import (
 	"dh/pkg/executor"
 	"dh/pkg/logging"
 	"fmt"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 	"os"
 	"os/user"
@@ -19,22 +18,17 @@ var (
 type SqlExecutorService struct {
 	executor       *executor.SqlExecutor
 	configFilePath string
-	config         executor.SqlExecutorConfig
 }
 
-func NewSqlExecutorService(config executor.SqlExecutorConfig) *SqlExecutorService {
-	sqlExecutor := executor.NewSqlExecutor(config)
-	res := &SqlExecutorService{
-		executor: sqlExecutor,
-	}
+func NewSqlExecutorService() *SqlExecutorService {
+	res := &SqlExecutorService{}
 
 	res.configFilePath = createConfigFile()
 
-	viper.SetConfigFile(res.configFilePath)
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(res.configFilePath)
+	config := loadConfig(res.configFilePath)
+	sqlExecutor := executor.NewSqlExecutor(config)
 
-	res.config = loadConfig()
+	res.executor = sqlExecutor
 
 	return res
 }
@@ -50,7 +44,8 @@ func (r *SqlExecutorService) ConfigIsEmpty() bool {
 }
 
 func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
-	loadedConfig := loadConfig()
+	loadedConfig := loadConfig(r.configFilePath)
+	// check config deltas, update only changed values
 	if loadedConfig.DbConnectionString != config.DbConnectionString {
 		loadedConfig.DbConnectionString = config.DbConnectionString
 	}
@@ -76,13 +71,13 @@ func (r *SqlExecutorService) Run(queryName string) [][]string {
 	return r.executor.RunQuery(queryName)
 }
 
-func loadConfig() executor.SqlExecutorConfig {
-	err := viper.ReadInConfig()
+func loadConfig(configFilePath string) executor.SqlExecutorConfig {
+	file, err := os.ReadFile(configFilePath)
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 	res := &executor.SqlExecutorConfig{}
-	err = viper.Unmarshal(res)
+	err = yaml.Unmarshal(file, res)
 	if err != nil {
 		logger.Printf("failed to unmarshall config file! using default")
 		return executor.SqlExecutorConfig{}
@@ -106,7 +101,7 @@ func createConfigFile() string {
 	if err != nil {
 		panic(err)
 	}
-	configPath = filepath.Join(configPath, "config.yaml")
+	configPath = filepath.Join(configPath, "qh.yaml")
 	_, err = os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dh/internal/qh"
-	"dh/pkg/executor"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -15,7 +14,7 @@ var (
 )
 
 func init() {
-	executorService = qh.NewSqlExecutorService(executor.SqlExecutorConfig{})
+	executorService = qh.NewSqlExecutorService()
 	qhCommand.
 		Flags().
 		BoolVarP(&setConfig, "conf", "c", false, "set config")
@@ -31,6 +30,7 @@ var qhCommand = &cobra.Command{
 func runQh(cmd *cobra.Command, args []string) {
 	if executorService.ConfigIsEmpty() && !setConfig {
 		fmt.Println("qh is not configured, please use c arg to set configuration")
+		return
 	}
 	if setConfig {
 		configViewModel := qh.NewViewModel(executorService)

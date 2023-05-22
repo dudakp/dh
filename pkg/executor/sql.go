@@ -34,7 +34,9 @@ type SqlExecutorConfig struct {
 }
 
 type TemplateData struct {
-	Abr  string
+	// Abr template name abbreviation - used ad argument for invoking sql query
+	Abr string
+	// Path to sql script file
 	Path string
 }
 
@@ -51,16 +53,12 @@ func NewSqlExecutor(config SqlExecutorConfig) *SqlExecutor {
 
 // RunQuery run specified query and return result set as matrix with first how af header
 func (r *SqlExecutor) RunQuery(queryName string) [][]string {
-	n := 2
-	table := make([][]string, n)
-	for i := 0; i < n; i++ {
-		if i == 0 {
-			table[i] = []string{"ID", "TITLE", "AUTHOR"}
-		} else {
-			table[i] = []string{"1", "Return of the king", "J. R. R. Tolkien"}
-		}
+	return [][]string{
+		{"ID", "TITLE", "AUTHOR"},
+		{"1", "Return of the king", "J. R. R. Tolkien"},
+		{"1", "Return of the king", "J. R. R. Tolkien"},
+		{"1", "Return of the king", "J. R. R. Tolkien"},
 	}
-	return table
 }
 
 func (r *SqlExecutor) ListAvailableTemplates() []TemplateData {
