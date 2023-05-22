@@ -2,4 +2,4 @@
 
 select *
 from BOOK
-where {{.column}} in ({{.arg}})
+where {{.column}} like ({{.arg}})

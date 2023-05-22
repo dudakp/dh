@@ -1,12 +1,20 @@
 package qh
 
 import (
-	"dh/pkg/executor"
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
+)
+
+/**
+TODO: reduce number of panics
+*/
+
+import (
+	"dh/pkg/executor"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"path/filepath"
 	"reflect"
 	"strings"
 )
@@ -153,7 +161,12 @@ func (r configModel) updateConfig() {
 	for i, input := range r.inputs {
 		switch i {
 		case cpTemplatesFolder:
-			conf.TemplatesPath = input.Value()
+			path := input.Value()
+			abs, err := filepath.Abs(path)
+			if err != nil {
+				panic(err)
+			}
+			conf.TemplatesPath = abs
 			break
 		case cpDbConnectionString:
 			conf.DbConnectionString = input.Value()

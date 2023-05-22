@@ -3,6 +3,13 @@ package qh
 import (
 	"dh/pkg/executor"
 	"dh/pkg/logging"
+)
+
+/**
+TODO: reduce number of panics
+*/
+
+import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -67,7 +74,11 @@ func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
 	}
 }
 
-func (r *SqlExecutorService) Run(queryName string) [][]string {
+func (r *SqlExecutorService) ListAvailableQueries() []executor.TemplateData {
+	return r.executor.ListAvailableTemplates()
+}
+
+func (r *SqlExecutorService) Run(queryName string) ([][]string, error) {
 	return r.executor.RunQuery(queryName)
 }
 

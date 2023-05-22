@@ -6,7 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mrhService *mrh2.Mrh
+var (
+	mrhService *mrh2.Mrh
+)
 
 func init() {
 	mrhService = &mrh2.Mrh{

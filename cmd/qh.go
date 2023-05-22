@@ -11,6 +11,7 @@ import (
 var (
 	setConfig       bool
 	executorService *qh.SqlExecutorService
+	listQueries     bool
 )
 
 func init() {
@@ -18,12 +19,14 @@ func init() {
 	qhCommand.
 		Flags().
 		BoolVarP(&setConfig, "conf", "c", false, "set config")
+	qhCommand.
+		Flags().
+		BoolVarP(&listQueries, "listQueries", "l", false, "List all available queries")
 }
 
 var qhCommand = &cobra.Command{
 	Use:   "qh",
 	Short: "query helper - collection of SQL queries",
-	Args:  cobra.MinimumNArgs(1),
 	Run:   runQh,
 }
 
@@ -40,8 +43,24 @@ func runQh(cmd *cobra.Command, args []string) {
 		}
 		return
 	}
-
-	res := executorService.Run(args[0])
+	if listQueries {
+		queries := executorService.ListAvailableQueries()
+		if len(queries) > 0 {
+			fmt.Printf("%d available queries:\n", len(queries))
+		} else {
+			fmt.Println("no available queries, please configure query dir path")
+			return
+		}
+		for _, query := range queries {
+			fmt.Println(fmt.Sprintf("%s", query.Abr))
+		}
+		return
+	}
+	if len(args) != 1 {
+		fmt.Println("missing name of query to be executed as arg")
+		return
+	}
+	res, err := executorService.Run(args[0])
 	resultSetModel := qh.NewResultModel(res)
 	if _, err := tea.NewProgram(resultSetModel).Run(); err != nil {
 		fmt.Println("Error running program:", err)

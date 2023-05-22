@@ -2,6 +2,8 @@ package executor
 
 /**
 
+TODO: reduce number of panics
+
 TODO: sql execution
 	* create first implementation of executing query from template
 
@@ -18,6 +20,10 @@ TODO: introspect all tables in selected query and generate names of all possible
 import (
 	"bytes"
 	"database/sql"
+	"errors"
+	"os"
+	"path/filepath"
+	"sort"
 )
 
 type SqlExecutor struct {
@@ -46,19 +52,34 @@ type simplePredicate struct {
 }
 
 func NewSqlExecutor(config SqlExecutorConfig) *SqlExecutor {
-	return &SqlExecutor{
+	res := &SqlExecutor{
 		config: config,
 	}
+	res.loadTemplates()
+	return res
+}
+
+func (r *SqlExecutor) PrepareQuery(queryName string, condition *simplePredicate) (string, error) {
+	if condition == nil {
+		return "", errors.New("specify query conditions")
+	}
+	templateIndex := sort.Search(len(r.templateData), func(i int) bool {
+		return r.templateData[i].Abr == queryName
+	})
+	template := r.templateData[templateIndex]
+
+	templateFile, err := os.OpenFile(template.Path, os.O_RDONLY, 0644)
+	// TODO: add go templating
 }
 
 // RunQuery run specified query and return result set as matrix with first how af header
-func (r *SqlExecutor) RunQuery(queryName string) [][]string {
-	return [][]string{
-		{"ID", "TITLE", "AUTHOR"},
-		{"1", "Return of the king", "J. R. R. Tolkien"},
-		{"1", "Return of the king", "J. R. R. Tolkien"},
-		{"1", "Return of the king", "J. R. R. Tolkien"},
+func (r *SqlExecutor) RunQuery(queryName string) ([][]string, error) {
+	_, err := r.executeWithResult("")
+	if err != nil {
+		logger.Printf("failed to execute query: %w", err)
+		return nil, err
 	}
+	return nil, nil
 }
 
 func (r *SqlExecutor) ListAvailableTemplates() []TemplateData {
@@ -66,7 +87,26 @@ func (r *SqlExecutor) ListAvailableTemplates() []TemplateData {
 }
 
 func (r *SqlExecutor) loadTemplates() {
+	o, err := os.Open(r.config.TemplatesPath)
+	if err != nil {
+		logger.Println("missing templatePath configuration!")
+		return
+	}
+	dir, err := o.ReadDir(0)
+	if err != nil {
+		panic(err)
+	}
+	for _, entry := range dir {
+		abs, err := filepath.Abs(entry.Name())
+		if err != nil {
+			panic(err)
+		}
 
+		r.templateData = append(r.templateData, TemplateData{
+			Abr:  entry.Name(),
+			Path: abs,
+		})
+	}
 }
 
 func (r *SqlExecutor) executeWithResult(command string, flags ...string) (*bytes.Buffer, error) {
