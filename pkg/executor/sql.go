@@ -2,11 +2,11 @@ package executor
 
 /**
 
-TODO: sql execution
-	* create first implementation of executing query from template
-
 TODO: sql rendering
 	* add option for multiple query parameters
+	* maybe try to use prepared statements - use ? or named parameters in query, upon loading introspect loaded query and provide hints for CLI
+
+TODO: add dynamic sql driver loading, maybe as plugin? idk, research this
 
 TODO: introspect all tables in selected query and generate names of all possible columns (haha, nice to have feature)
 
@@ -145,28 +145,47 @@ func (r *SqlExecutor) loadTemplates() error {
 	return nil
 }
 
-// TODO: maybe like this: https://betterprogramming.pub/dynamic-sql-query-with-go-8aeedaa02907
 func (r *SqlExecutor) executeWithResult(command string, args ...string) (*bytes.Buffer, error) {
 	rows, err := r.db.Query(command)
 	if err != nil {
 		return nil, err
 	}
-	var k string
-	for rows.Next() {
-		err := rows.Scan(&k, &k, &k)
-		if err != nil {
-			return nil, err
-		}
-		logger.Printf("got: %s", k)
+	header, err := rows.Columns()
+	if err != nil {
+		return nil, err
 	}
+
+	// real representation of data in row as []byte
+	row := make([][]byte, len(header))
+	// pointers to all columns returned by query
+	pRow := make([]any, len(header))
+
+	resultSet := make([][]string, 0, 1)
+	resultSet = append(resultSet, header)
+
+	// set pointers
+	for j := range pRow {
+		pRow[j] = &row[j]
+	}
+	i := 1
+	for rows.Next() {
+		err = rows.Scan(pRow...)
+		if err != nil {
+			i++
+			break
+		}
+		// allocate space for new row
+		resultSet = append(resultSet, make([]string, 0, len(header)))
+		for _, c := range row {
+			// put col data to row
+			resultSet[i] = append(resultSet[i], string(c))
+		}
+		i++
+	}
+	// TODO: think how to impose type safety
 	res := &bytes.Buffer{}
 	encoder := gob.NewEncoder(res)
-	tableResult := [][]string{
-		{"ID", "TITLE", "AUTHOR_ID"},
-		{"1", "The Fellowship of the Ring", "1"},
-		{"2", "The Two Towers", "1"},
-	}
-	err = encoder.Encode(tableResult)
+	err = encoder.Encode(resultSet)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +193,5 @@ func (r *SqlExecutor) executeWithResult(command string, args ...string) (*bytes.
 }
 
 func (r *SqlExecutor) execute(command string, args ...string) error {
-
 	return nil
 }
