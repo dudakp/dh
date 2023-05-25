@@ -30,11 +30,15 @@ type SqlExecutorService struct {
 	configFilePath string
 }
 
-func NewSqlExecutorService() (*SqlExecutorService, error) {
+func NewSqlExecutorService(loadTemplates bool) (*SqlExecutorService, error) {
 	res := &SqlExecutorService{}
 
 	res.configFilePath = createConfigFile()
 
+	// for situation if config is not set
+	if !loadTemplates {
+		return res, nil
+	}
 	config := loadConfig(res.configFilePath)
 	sqlExecutor, err := executor.NewSqlExecutor(config)
 	if err != nil {

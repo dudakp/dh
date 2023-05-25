@@ -32,7 +32,7 @@ var qhCommand = &cobra.Command{
 }
 
 func runQh(cmd *cobra.Command, args []string) {
-	es, err := qh.NewSqlExecutorService()
+	es, err := qh.NewSqlExecutorService(!setConfig)
 	executorService = es
 	if err != nil {
 		panic(err)
