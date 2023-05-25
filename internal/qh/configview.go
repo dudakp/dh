@@ -88,7 +88,11 @@ func (r configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s := msg.String()
 
 			if s == "enter" && r.focusIndex == len(r.inputs) {
-				r.updateConfig()
+				err := r.updateConfig()
+				if err != nil {
+					logger.Fatalf("unable to update config: %w", err)
+					return r, tea.Quit
+				}
 				return r, tea.Quit
 			}
 
@@ -156,7 +160,7 @@ func (r *configModel) updateInputs(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (r configModel) updateConfig() {
+func (r configModel) updateConfig() error {
 	conf := executor.SqlExecutorConfig{}
 	for i, input := range r.inputs {
 		switch i {
@@ -172,6 +176,7 @@ func (r configModel) updateConfig() {
 			conf.DbConnectionString = input.Value()
 			break
 		}
-		r.executorService.WriteConfig(conf)
+		return r.executorService.WriteConfig(conf)
 	}
+	return nil
 }

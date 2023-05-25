@@ -1,5 +1,4 @@
-{{- /*gotype: dh/pkg/executor.simplePredicate*/ -}}
-
-select *
-from BOOK
-where {{.column}} like ({{.arg}})
+select b.*
+from BOOK b
+         join AUTHOR a on a.id = b.author_id
+where a.surname like '{{.Arg}}'

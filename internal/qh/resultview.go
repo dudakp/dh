@@ -10,17 +10,18 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-type resultModel struct {
+type ResultModel struct {
 	table table.Model
 }
 
-func NewResultModel(resultSet [][]string) resultModel {
+func NewResultModel(resultSet [][]string) ResultModel {
 	if len(resultSet) < 2 {
-		return resultModel{}
+		return ResultModel{}
 	}
-	res := resultModel{}
+	res := ResultModel{}
 	var columns []table.Column
 	var rows []table.Row
+	// TODO: lol, fix this shit
 	for i, row := range resultSet {
 		if i == 0 {
 			for _, value := range row {
@@ -53,9 +54,9 @@ func NewResultModel(resultSet [][]string) resultModel {
 	return res
 }
 
-func (m resultModel) Init() tea.Cmd { return nil }
+func (m ResultModel) Init() tea.Cmd { return nil }
 
-func (m resultModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ResultModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -79,6 +80,6 @@ func (m resultModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m resultModel) View() string {
+func (m ResultModel) View() string {
 	return baseStyle.Render(m.table.View()) + "\n"
 }

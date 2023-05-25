@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"dh/internal/qh"
+	"dh/pkg/executor"
+	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -15,7 +17,6 @@ var (
 )
 
 func init() {
-	executorService = qh.NewSqlExecutorService()
 	qhCommand.
 		Flags().
 		BoolVarP(&setConfig, "conf", "c", false, "set config")
@@ -31,6 +32,11 @@ var qhCommand = &cobra.Command{
 }
 
 func runQh(cmd *cobra.Command, args []string) {
+	es, err := qh.NewSqlExecutorService()
+	executorService = es
+	if err != nil {
+		panic(err)
+	}
 	if executorService.ConfigIsEmpty() && !setConfig {
 		fmt.Println("qh is not configured, please use c arg to set configuration")
 		return
@@ -52,15 +58,26 @@ func runQh(cmd *cobra.Command, args []string) {
 			return
 		}
 		for _, query := range queries {
-			fmt.Println(fmt.Sprintf("%s", query.Abr))
+			fmt.Println(fmt.Sprintf("%s", query))
 		}
 		return
 	}
-	if len(args) != 1 {
+	if len(args) < 1 {
 		fmt.Println("missing name of query to be executed as arg")
 		return
 	}
-	res, err := executorService.Run(args[0])
+	var queryData executor.QueryData
+	if len(args) > 1 {
+		queryData.Arg = args[1]
+	}
+	queryName := args[0]
+	res, err := executorService.Run(queryName, queryData)
+	if err != nil {
+		if errors.Is(err, executor.QueryNotFound) {
+			fmt.Printf("query: %s not found", queryName)
+			os.Exit(0)
+		}
+	}
 	resultSetModel := qh.NewResultModel(res)
 	if _, err := tea.NewProgram(resultSetModel).Run(); err != nil {
 		fmt.Println("Error running program:", err)

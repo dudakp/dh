@@ -1,7 +1,7 @@
 package executor
 
 type GitExecutor struct {
-	FileExecutor
+	ProgramExecutor
 }
 
 func NewGitExecutor() *GitExecutor {

@@ -3,6 +3,7 @@ package qh
 import (
 	"dh/pkg/executor"
 	"dh/pkg/logging"
+	"errors"
 )
 
 /**
@@ -20,6 +21,8 @@ import (
 
 var (
 	logger = logging.GetLoggerFor("sqlexecutorservice")
+
+	errUnableToCreateSqlExecutor = errors.New("unable to create sqlExecutor")
 )
 
 type SqlExecutorService struct {
@@ -27,17 +30,20 @@ type SqlExecutorService struct {
 	configFilePath string
 }
 
-func NewSqlExecutorService() *SqlExecutorService {
+func NewSqlExecutorService() (*SqlExecutorService, error) {
 	res := &SqlExecutorService{}
 
 	res.configFilePath = createConfigFile()
 
 	config := loadConfig(res.configFilePath)
-	sqlExecutor := executor.NewSqlExecutor(config)
+	sqlExecutor, err := executor.NewSqlExecutor(config)
+	if err != nil {
+		return nil, errors.Join(errUnableToCreateSqlExecutor, err)
+	}
 
 	res.executor = sqlExecutor
 
-	return res
+	return res, nil
 }
 
 func (r *SqlExecutorService) ConfigIsEmpty() bool {
@@ -50,7 +56,7 @@ func (r *SqlExecutorService) ConfigIsEmpty() bool {
 	}
 }
 
-func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
+func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) error {
 	loadedConfig := loadConfig(r.configFilePath)
 	// check config deltas, update only changed values
 	if loadedConfig.DbConnectionString != config.DbConnectionString {
@@ -62,24 +68,22 @@ func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) {
 
 	yamlConf, err := yaml.Marshal(loadedConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	file, err := os.OpenFile(r.configFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	_, err = file.Write(yamlConf)
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
-func (r *SqlExecutorService) ListAvailableQueries() []executor.TemplateData {
+func (r *SqlExecutorService) ListAvailableQueries() []string {
 	return r.executor.ListAvailableTemplates()
 }
 
-func (r *SqlExecutorService) Run(queryName string) ([][]string, error) {
-	return r.executor.RunQuery(queryName)
+func (r *SqlExecutorService) Run(queryName string, queryData executor.QueryData) ([][]string, error) {
+	return r.executor.RunQuery(queryName, queryData)
 }
 
 func loadConfig(configFilePath string) executor.SqlExecutorConfig {
