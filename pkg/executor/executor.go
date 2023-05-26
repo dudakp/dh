@@ -1,9 +1,7 @@
 package executor
 
 /**
-TODO: create executor types
-	* sqlExecutor - calling raw or templated sql scripts (control r/w access)
-*/
+ */
 
 import (
 	"bytes"

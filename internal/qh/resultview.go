@@ -19,30 +19,7 @@ func NewResultModel(resultSet [][]string) ResultModel {
 		return ResultModel{}
 	}
 	res := ResultModel{}
-	var columns []table.Column
-	var rows []table.Row
-	// TODO: lol, refactor this shit
-	for i, row := range resultSet {
-		if i == 0 {
-			for _, value := range row {
-				columns = append(columns, table.Column{Title: value, Width: 25})
-			}
-		} else {
-			r := table.Row{}
-			for j := range columns {
-				r = append(r, row[j])
-			}
-
-			rows = append(rows, r)
-		}
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(7),
-	)
+	t := buildTable(resultSet)
 
 	s := table.DefaultStyles()
 	s.Header = s.Header.
@@ -87,4 +64,30 @@ func (m ResultModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ResultModel) View() string {
 	return baseStyle.Render(m.table.View()) + "\n"
+}
+
+func buildTable(resultSet [][]string) table.Model {
+	var columns []table.Column
+	var rows []table.Row
+	for i, row := range resultSet {
+		if i == 0 {
+			for _, value := range row {
+				columns = append(columns, table.Column{Title: value, Width: 15})
+			}
+		} else {
+			r := table.Row{}
+			for j := range columns {
+				r = append(r, row[j])
+			}
+			rows = append(rows, r)
+		}
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+	return t
 }

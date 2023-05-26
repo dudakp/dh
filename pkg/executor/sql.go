@@ -2,6 +2,10 @@ package executor
 
 /**
 
+TODO: dynamic sql driver loading
+	idea: install several drivers and upon creating instance of SqlExecutor
+	register specified driver using: sql.Register(driverName, driverObject)
+
 TODO: sql rendering
 	* add option for multiple query parameters
 	* maybe try to use prepared statements - use ? or named parameters in query, upon loading introspect loaded query and provide hints for CLI
