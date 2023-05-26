@@ -21,14 +21,19 @@ func NewResultModel(resultSet [][]string) ResultModel {
 	res := ResultModel{}
 	var columns []table.Column
 	var rows []table.Row
-	// TODO: lol, fix this shit
+	// TODO: lol, refactor this shit
 	for i, row := range resultSet {
 		if i == 0 {
 			for _, value := range row {
-				columns = append(columns, table.Column{Title: value, Width: 50})
+				columns = append(columns, table.Column{Title: value, Width: 25})
 			}
 		} else {
-			rows = append(rows, table.Row{row[0], row[1], row[2]})
+			r := table.Row{}
+			for j := range columns {
+				r = append(r, row[j])
+			}
+
+			rows = append(rows, r)
 		}
 	}
 
