@@ -22,6 +22,7 @@ import (
 const (
 	cpTemplatesFolder = iota
 	cpDbConnectionString
+	cpDbVendor
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
-type configModel struct {
+type ConfigModel struct {
 	executorService *SqlExecutorService
 	focusIndex      int
 	inputs          []textinput.Model
@@ -43,10 +44,10 @@ type configModel struct {
 	placeholderTagToValue map[string]string
 }
 
-func NewViewModel(executorService *SqlExecutorService) configModel {
+func NewViewModel(executorService *SqlExecutorService) ConfigModel {
 	confType := reflect.TypeOf(executor.SqlExecutorConfig{})
 	numFields := confType.NumField()
-	m := configModel{
+	m := ConfigModel{
 		executorService:       executorService,
 		inputs:                make([]textinput.Model, numFields),
 		placeholderTagToValue: map[string]string{},
@@ -72,11 +73,11 @@ func NewViewModel(executorService *SqlExecutorService) configModel {
 	return m
 }
 
-func (r configModel) Init() tea.Cmd {
+func (r ConfigModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (r configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (r ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -129,7 +130,7 @@ func (r configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-func (r configModel) View() string {
+func (r ConfigModel) View() string {
 	var b strings.Builder
 
 	for i := range r.inputs {
@@ -151,7 +152,7 @@ func (r configModel) View() string {
 	return b.String()
 }
 
-func (r *configModel) updateInputs(msg tea.Msg) tea.Cmd {
+func (r *ConfigModel) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(r.inputs))
 	for i := range r.inputs {
 		r.inputs[i], cmds[i] = r.inputs[i].Update(msg)
@@ -160,7 +161,10 @@ func (r *configModel) updateInputs(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (r configModel) updateConfig() error {
+// TODO: range r.inputs ha only one elemnt or loop by some miracle breaks,
+//
+//	resulting in rewriting only first config - cpTemplatesFolder
+func (r ConfigModel) updateConfig() error {
 	conf := executor.SqlExecutorConfig{}
 	for i, input := range r.inputs {
 		switch i {
@@ -171,10 +175,10 @@ func (r configModel) updateConfig() error {
 				panic(err)
 			}
 			conf.TemplatesPath = abs
-			break
 		case cpDbConnectionString:
 			conf.DbConnectionString = input.Value()
-			break
+		case cpDbVendor:
+			conf.DbVendor = input.Value()
 		}
 		return r.executorService.WriteConfig(conf)
 	}

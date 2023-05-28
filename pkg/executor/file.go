@@ -2,32 +2,46 @@ package executor
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
 )
 
-type ProgramExecutor struct {
+var (
+	ErrExecutableNotFound = errors.New("executable not found")
+)
+
+type FileExecutor struct {
 	executableName string
 	path           string
 }
 
-func newFileExecutor(executableName string) ProgramExecutor {
-	return ProgramExecutor{
-		executableName: executableName,
-		path:           findExecutable(executableName),
+// TODO: add sensible file mode check - non-executable file will return error and add unit test
+func newFileExecutor(executableName string) (*FileExecutor, error) {
+	path, err := findExecutable(executableName)
+	if err != nil {
+		return nil, err
 	}
+	return &FileExecutor{
+		executableName: executableName,
+		path:           path,
+	}, nil
 }
 
-func findExecutable(executableName string) string {
+func findExecutable(executableName string) (string, error) {
 	path, err := exec.LookPath(executableName)
 	if err != nil {
-		logger.Fatalf("Unable to find executable: %s!", executableName)
+		if errors.Is(err, exec.ErrNotFound) {
+			logger.Printf("executable %s not found", executableName)
+			return "", ErrExecutableNotFound
+		}
+		return "", err
 	}
-	return path
+	return path, nil
 }
 
 // executeWithResult executes given command with flags and returns stdout containing executed command result.
-func (r *ProgramExecutor) executeWithResult(command string, args ...string) (stdout *bytes.Buffer, err error) {
+func (r *FileExecutor) executeWithResult(command string, args ...string) (stdout *bytes.Buffer, err error) {
 	argWithFlags := []string{command}
 	argWithFlags = append(argWithFlags, args...)
 	cmd := exec.Command(r.path, argWithFlags...)
@@ -45,7 +59,7 @@ func (r *ProgramExecutor) executeWithResult(command string, args ...string) (std
 }
 
 // execute does same thing as executeWithResult but, only error is returned upon non-zero exist status of command
-func (r *ProgramExecutor) execute(command string, args ...string) error {
+func (r *FileExecutor) execute(command string, args ...string) error {
 	_, err := r.executeWithResult(command, args...)
 	return err
 }

@@ -73,7 +73,7 @@ func runQh(cmd *cobra.Command, args []string) {
 	queryName := args[0]
 	res, err := executorService.Run(queryName, queryData)
 	if err != nil {
-		if errors.Is(err, executor.QueryNotFound) {
+		if errors.Is(err, executor.ErrQueryNotFound) {
 			fmt.Printf("query: %s not found", queryName)
 			os.Exit(0)
 		}

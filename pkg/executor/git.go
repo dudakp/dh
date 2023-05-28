@@ -1,13 +1,17 @@
 package executor
 
 type GitExecutor struct {
-	ProgramExecutor
+	*FileExecutor
 }
 
-func NewGitExecutor() *GitExecutor {
-	return &GitExecutor{
-		newFileExecutor("git"),
+func NewGitExecutor() (*GitExecutor, error) {
+	executor, err := newFileExecutor("git")
+	if err != nil {
+		return nil, err
 	}
+	return &GitExecutor{
+		executor,
+	}, nil
 }
 
 func (r *GitExecutor) Checkout(issueBranch string) error {

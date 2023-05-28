@@ -10,7 +10,7 @@ type PureFlow[T any] struct {
 func NewPureFlow[T any](flowOpts *Opts, terminalOnError func(err error), initialData T, handlers ...*Handler[T]) (*PureFlow[T], error) {
 	for _, handler := range handlers {
 		if handler.isPgroup() {
-			return nil, ParallelHandlerNotSupported
+			return nil, ErrParallelHandlerNotSupported
 		}
 	}
 	var baseHandlers []*Handler[T]

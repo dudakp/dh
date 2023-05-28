@@ -11,9 +11,7 @@ var (
 )
 
 func init() {
-	mrhService = &mrh2.Mrh{
-		GitExecutor: executor.NewGitExecutor(),
-	}
+	mrhService = &mrh2.Mrh{}
 
 	mrhCommand.
 		Flags().
@@ -31,6 +29,12 @@ var mrhCommand = &cobra.Command{
 }
 
 func mrh(cmd *cobra.Command, args []string) {
+	gitExecutor, err := executor.NewGitExecutor()
+	if err != nil {
+		logger.Fatalf("unable to create file executor: %w, ", err)
+	}
+	mrhService.GitExecutor = gitExecutor
+
 	issue := args[0]
 	mrhService.Run(issue)
 }

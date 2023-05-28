@@ -42,8 +42,8 @@ const (
 )
 
 var (
-	HandlerMissingActionErr     = errors.New("no action function specified for handler")
-	ParallelHandlerNotSupported = errors.New("parallel handler is supported only in EffectFlow")
+	ErrHandlerMissingAction        = errors.New("no action function specified for handler")
+	ErrParallelHandlerNotSupported = errors.New("parallel handler is supported only in EffectFlow")
 
 	logger          = logging.GetLoggerFor("flow")
 	flowEventLogger = logging.GetEventLoggerFor("flow").
@@ -170,7 +170,7 @@ func chainHandlers[T any](handlers []*Handler[T]) error {
 	for i, handler := range handlers {
 		// handlers containing pGroup does not need to have an action
 		if handler.action == nil && !handler.isPgroup() {
-			return HandlerMissingActionErr
+			return ErrHandlerMissingAction
 		}
 		handler.id = i
 		if i == 0 {

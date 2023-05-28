@@ -14,7 +14,6 @@ TODO: add dynamic sql driver loading, maybe as plugin? idk, research this
 
 TODO: introspect all tables in selected query and generate names of all possible columns (haha, nice to have feature)
 
-
 */
 
 import (
@@ -24,13 +23,14 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
+	_ "github.com/microsoft/go-mssqldb"
 	"os"
 	"path/filepath"
 	"text/template"
 )
 
 var (
-	QueryNotFound = errors.New("query not found")
+	ErrQueryNotFound = errors.New("query not found")
 )
 
 type sqlPredicateOperator string
@@ -44,9 +44,10 @@ type SqlExecutor struct {
 }
 
 type SqlExecutorConfig struct {
-	// do not change order or delete properties!!! this change will need changes in sqlexecutorview.go
+	// do not change order or delete properties!!! this change will need changes in configview.go
 	TemplatesPath      string `yaml:"templatesPath" placeholder:"Path to sql templates"`
 	DbConnectionString string `yaml:"dbConnectionString" placeholder:"DB connection string"`
+	DbVendor           string `yaml:"dbVendor" placeholder:"Database vendor"`
 }
 
 type QueryData struct {
@@ -61,10 +62,17 @@ func NewSqlExecutor(config SqlExecutorConfig) (*SqlExecutor, error) {
 		templateData: make(map[string]string),
 	}
 
-	db, err := sql.Open("postgres", res.config.DbConnectionString)
+	db, err := sql.Open(res.config.DbVendor, res.config.DbConnectionString)
 	if err != nil {
 		return nil, err
 	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Printf("error closing database connection")
+			os.Exit(1)
+		}
+	}(db)
 	res.db = db
 	err = res.loadTemplates()
 	if err != nil {
@@ -90,7 +98,7 @@ func (r *SqlExecutor) RunQuery(queryName string, condition QueryData) ([][]strin
 
 func (r *SqlExecutor) ListAvailableTemplates() []string {
 	var res = make([]string, len(r.templateData))
-	for k, _ := range r.templateData {
+	for k := range r.templateData {
 		res = append(res, k)
 	}
 	return res
@@ -110,7 +118,7 @@ func (r *SqlExecutor) prepareQuery(queryName string, condition *QueryData) (stri
 
 	queryFileName := fmt.Sprint(queryName, ".sql")
 	if _, ok := r.templateData[queryFileName]; !ok {
-		return "", QueryNotFound
+		return "", ErrQueryNotFound
 	}
 	queryPath := r.templateData[queryFileName]
 
@@ -150,7 +158,8 @@ func (r *SqlExecutor) loadTemplates() error {
 }
 
 func (r *SqlExecutor) executeWithResult(command string, args ...string) (*bytes.Buffer, error) {
-	rows, err := r.db.Query(command)
+	statement, err := r.db.Prepare(command)
+	rows, err := statement.Query(args)
 	if err != nil {
 		return nil, err
 	}

@@ -63,11 +63,14 @@ func (r *SqlExecutorService) ConfigIsEmpty() bool {
 func (r *SqlExecutorService) WriteConfig(config executor.SqlExecutorConfig) error {
 	loadedConfig := loadConfig(r.configFilePath)
 	// check config deltas, update only changed values
-	if loadedConfig.DbConnectionString != config.DbConnectionString {
+	if loadedConfig.DbConnectionString != config.DbConnectionString && len(config.DbConnectionString) > 0 {
 		loadedConfig.DbConnectionString = config.DbConnectionString
 	}
-	if loadedConfig.TemplatesPath != config.TemplatesPath {
+	if loadedConfig.TemplatesPath != config.TemplatesPath && len(config.TemplatesPath) > 0 {
 		loadedConfig.TemplatesPath = config.TemplatesPath
+	}
+	if loadedConfig.DbVendor != config.DbVendor && len(config.DbVendor) > 0 {
+		loadedConfig.DbVendor = config.DbVendor
 	}
 
 	yamlConf, err := yaml.Marshal(loadedConfig)
