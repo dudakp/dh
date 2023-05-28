@@ -31,7 +31,7 @@ var mrhCommand = &cobra.Command{
 func mrh(cmd *cobra.Command, args []string) {
 	gitExecutor, err := executor.NewGitExecutor()
 	if err != nil {
-		logger.Fatalf("unable to create file executor: %w, ", err)
+		logger.Fatalf("unable to create file executor: %s, ", err.Error())
 	}
 	mrhService.GitExecutor = gitExecutor
 

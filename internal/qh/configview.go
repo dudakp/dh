@@ -91,7 +91,7 @@ func (r ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if s == "enter" && r.focusIndex == len(r.inputs) {
 				err := r.updateConfig()
 				if err != nil {
-					logger.Fatalf("unable to update config: %w", err)
+					logger.Fatalf("unable to update config: %s", err.Error())
 					return r, tea.Quit
 				}
 				return r, tea.Quit
