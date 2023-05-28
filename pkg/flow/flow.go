@@ -3,13 +3,8 @@ package flow
 /**
 
 TODO: create operators
-	* pipe
-	* map
-
-
-TODO: create execution strategies
 	* conditional
-		based on predicate in handler, the execution will continue to specified handler
+		based on predicate in handler, the execution will continue to specified handler - maybe flow like this cant be constructed manually (think about this)
 
 
 TODO: create flow types:
