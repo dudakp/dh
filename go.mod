@@ -1,4 +1,4 @@
-module dh
+module github.com/dudakp/dh
 
 go 1.20
 

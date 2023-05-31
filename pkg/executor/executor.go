@@ -5,7 +5,7 @@ package executor
 
 import (
 	"bytes"
-	"dh/pkg/logging"
+	"github.com/dudakp/dh/pkg/logging"
 )
 
 var (

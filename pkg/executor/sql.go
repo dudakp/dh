@@ -66,13 +66,6 @@ func NewSqlExecutor(config SqlExecutorConfig) (*SqlExecutor, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			logger.Printf("error closing database connection")
-			os.Exit(1)
-		}
-	}(db)
 	res.db = db
 	err = res.loadTemplates()
 	if err != nil {
@@ -158,8 +151,17 @@ func (r *SqlExecutor) loadTemplates() error {
 }
 
 func (r *SqlExecutor) executeWithResult(command string, args ...string) (*bytes.Buffer, error) {
-	statement, err := r.db.Prepare(command)
-	rows, err := statement.Query(args)
+	var err error
+	defer func(db *sql.DB) {
+		err = db.Close()
+		if err != nil {
+			logger.Print("failed to close db connection")
+		}
+	}(r.db)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.db.Query(command)
 	if err != nil {
 		return nil, err
 	}

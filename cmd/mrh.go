@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	mrh2 "dh/internal/mrh"
-	"dh/pkg/executor"
+	mrh2 "github.com/dudakp/dh/internal/mrh"
+	"github.com/dudakp/dh/pkg/executor"
 	"github.com/spf13/cobra"
 )
 

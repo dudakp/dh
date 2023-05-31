@@ -10,10 +10,10 @@ TODO: reduce number of panics
 */
 
 import (
-	"dh/pkg/executor"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dudakp/dh/pkg/executor"
 	"path/filepath"
 	"reflect"
 	"strings"

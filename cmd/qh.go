@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"dh/internal/qh"
-	"dh/pkg/executor"
 	"errors"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dudakp/dh/internal/qh"
+	"github.com/dudakp/dh/pkg/executor"
 	"github.com/spf13/cobra"
 	"os"
 )

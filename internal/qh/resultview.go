@@ -72,7 +72,7 @@ func buildTable(resultSet [][]string) table.Model {
 	for i, row := range resultSet {
 		if i == 0 {
 			for _, value := range row {
-				columns = append(columns, table.Column{Title: value, Width: 15})
+				columns = append(columns, table.Column{Title: value, Width: 25})
 			}
 		} else {
 			r := table.Row{}
