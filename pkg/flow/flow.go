@@ -13,6 +13,7 @@ TODO: create flow types:
 		flow loaded from event log
 	* ApiFlow
 		flow calling REST API
+		not neccesary restFlow but create restHandler that can be incorporated info any flow
 
 
 TODO: create event log parser
