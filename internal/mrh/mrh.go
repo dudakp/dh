@@ -27,7 +27,7 @@ func (r *Mrh) Run(issue string) {
 				err := r.GitExecutor.Stash(false)
 				return err, nil
 			},
-			func(handler *flow.SimpleHandler[any], handlerErr error) {
+			func(handler *flow.Handler[any], handlerErr error) {
 				err = errors.Join(handlerErr)
 			}),
 		flow.NewHandler(
@@ -35,7 +35,7 @@ func (r *Mrh) Run(issue string) {
 				err := r.GitExecutor.Checkout(r.BranchType + "/" + issue)
 				return err, nil
 			},
-			func(handler *flow.SimpleHandler[any], handlerErr error) {
+			func(handler *flow.Handler[any], handlerErr error) {
 				err = errors.Join(handlerErr)
 			}),
 	)
@@ -47,7 +47,7 @@ func (r *Mrh) Run(issue string) {
 				err := r.GitExecutor.Checkout("develop")
 				return err, nil
 			},
-			func(handler *flow.SimpleHandler[any], handlerErr error) {
+			func(handler *flow.Handler[any], handlerErr error) {
 				err = errors.Join(handlerErr)
 			}),
 		flow.NewHandler(
@@ -55,7 +55,7 @@ func (r *Mrh) Run(issue string) {
 				err := r.GitExecutor.Stash(true)
 				return err, nil
 			},
-			func(handler *flow.SimpleHandler[any], handlerErr error) {
+			func(handler *flow.Handler[any], handlerErr error) {
 				err = errors.Join(handlerErr)
 			}),
 	)

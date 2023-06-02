@@ -11,10 +11,6 @@ TODO: create flow types:
 	* TemplatedFlow
 		flow definition in file, calling scripts (bash scripts)
 		flow loaded from event log
-	* ApiFlow
-		flow calling REST API
-		not neccesary restFlow but create restHandler that can be incorporated info any flow
-
 
 TODO: create event log parser
 	nice to have - not priority
