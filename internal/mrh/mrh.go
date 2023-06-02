@@ -1,10 +1,10 @@
 package mrh
 
 import (
-	"dh/pkg/executor"
-	"dh/pkg/flow"
-	"dh/pkg/logging"
 	"errors"
+	"github.com/dudakp/dh/pkg/executor"
+	"github.com/dudakp/dh/pkg/flow"
+	"github.com/dudakp/dh/pkg/logging"
 )
 
 var (

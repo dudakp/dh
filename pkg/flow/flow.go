@@ -22,9 +22,9 @@ TODO: create event log parser
 
 import (
 	"context"
-	"dh/pkg/logging"
 	"errors"
 	"fmt"
+	"github.com/dudakp/dh/pkg/logging"
 	"golang.org/x/sync/errgroup"
 )
 

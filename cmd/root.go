@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"dh/pkg/logging"
 	"fmt"
+	"github.com/dudakp/dh/pkg/logging"
 	"github.com/spf13/cobra"
 	"os"
 )

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dh/cmd"
+	"github.com/dudakp/dh/cmd"
 )
 
 func main() {
