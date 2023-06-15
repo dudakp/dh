@@ -17,6 +17,7 @@ TODO: introspect all tables in selected query and generate names of all possible
 */
 
 import (
+	"bufio"
 	"bytes"
 	"database/sql"
 	"encoding/gob"
@@ -26,6 +27,7 @@ import (
 	_ "github.com/microsoft/go-mssqldb"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -35,12 +37,17 @@ var (
 
 type sqlPredicateOperator string
 
+type templateData struct {
+	path        string
+	description string
+}
+
 type SqlExecutor struct {
 	db *sql.DB
 
 	config SqlExecutorConfig
 	// templateData key -> sql script file name, value -> sql script abs path
-	templateData map[string]string
+	templateData map[string]*templateData
 }
 
 type SqlExecutorConfig struct {
@@ -59,7 +66,7 @@ type QueryData struct {
 func NewSqlExecutor(config SqlExecutorConfig) (*SqlExecutor, error) {
 	res := &SqlExecutor{
 		config:       config,
-		templateData: make(map[string]string),
+		templateData: make(map[string]*templateData),
 	}
 
 	db, err := sql.Open(res.config.DbVendor, res.config.DbConnectionString)
@@ -92,7 +99,7 @@ func (r *SqlExecutor) RunQuery(queryName string, condition QueryData) ([][]strin
 func (r *SqlExecutor) ListAvailableTemplates() []string {
 	var res = make([]string, len(r.templateData))
 	for k := range r.templateData {
-		res = append(res, k)
+		res = append(res, k+" -> "+r.templateData[k].description)
 	}
 	return res
 }
@@ -113,9 +120,8 @@ func (r *SqlExecutor) prepareQuery(queryName string, condition *QueryData) (stri
 	if _, ok := r.templateData[queryFileName]; !ok {
 		return "", ErrQueryNotFound
 	}
-	queryPath := r.templateData[queryFileName]
 
-	tmpl, err := template.ParseFiles(queryPath)
+	tmpl, err := template.ParseFiles(r.templateData[queryFileName].path)
 	if err != nil {
 		return "", err
 	}
@@ -145,7 +151,24 @@ func (r *SqlExecutor) loadTemplates() error {
 			return err
 		}
 
-		r.templateData[entry.Name()] = abs
+		file, err := os.ReadFile(abs)
+		if err != nil {
+			return err
+		}
+		data := &templateData{}
+		r.templateData[entry.Name()] = data
+
+		data.path = abs
+
+		scanner := bufio.NewScanner(bytes.NewReader(file))
+		scanner.Split(bufio.ScanLines)
+
+		scanner.Scan()
+		line := scanner.Text()
+		if strings.HasPrefix(line, "--") {
+			data.description = strings.ReplaceAll(line, "--", "")
+		}
+
 	}
 	return nil
 }
